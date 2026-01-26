@@ -1,12 +1,15 @@
 import Link from "next/link"
 import {
+  BookOpenIcon,
   LayoutDashboardIcon,
+  LayersIcon,
   SearchIcon,
   SettingsIcon,
   ShieldIcon,
   UsersIcon,
 } from "lucide-react"
 
+import { LogoutButton } from "@/components/logout-button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Input } from "@/components/ui/input"
 import {
@@ -25,10 +28,15 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { getAdminFromSessionToken, getSessionCookieName } from "@/lib/auth"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboardIcon },
   { href: "/admin/admins", label: "Admins", icon: UsersIcon },
+  { href: "/admin/courses", label: "Courses", icon: BookOpenIcon },
+  { href: "/admin/classes", label: "Classes", icon: LayersIcon },
 ] as const
 
 const otherItems = [
@@ -36,11 +44,19 @@ const otherItems = [
   { href: "/admin/settings", label: "Settings", icon: SettingsIcon },
 ] as const
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const cookieStore = await cookies()
+  const sessionToken = cookieStore.get(getSessionCookieName())?.value
+  const admin = await getAdminFromSessionToken(sessionToken)
+
+  if (!admin) {
+    redirect("/admin-login")
+  }
+
   return (
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -110,9 +126,7 @@ export default function AdminLayout({
                 <Input className="pl-9" placeholder="Search" />
               </div>
               <ThemeToggle />
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold">
-                SN
-              </div>
+              <LogoutButton />
             </div>
           </header>
           <div className="flex-1 px-6 py-6">{children}</div>
