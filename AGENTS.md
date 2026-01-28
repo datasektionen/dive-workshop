@@ -7,14 +7,17 @@ Project: Dive Workshop (Next.js App Router + Prisma + Postgres)
   - Public: `/` (access code)
   - Auth: `/admin-login`
   - Admin: `/admin/*`
+  - Participant app: `/app`
   - API: `app/api/*`
 - UI components: `components/`
   - Admin utilities: `components/admin/*`
+  - ImagiCharm UI: `components/imagicharm/*`
   - Shadcn UI: `components/ui/*`
 - Database:
   - Schema: `prisma/schema.prisma`
   - Config: `prisma.config.ts`
   - Seed: `prisma/seed.mjs`
+  - Migrations: `prisma/migrations/*`
 
 ## Core conventions
 - **Auth**: Session cookie `dive_session` (httpOnly). Session records stored in `Session` table.
@@ -22,6 +25,7 @@ Project: Dive Workshop (Next.js App Router + Prisma + Postgres)
 - **API access**: All admin APIs check auth via `getAdminFromRequest()` in `lib/auth.ts`.
 - **Naming**: CamelCase in Prisma models/fields (e.g. `fullName`).
 - **UI reuse**: Use `components/admin/page-header.tsx` and `components/admin/data-table.tsx` for list pages.
+- **Participant app**: `/app` is protected via `app/app/layout.tsx` using participant sessions.
 
 ## Adding new admin list pages
 1) Add DB model in `prisma/schema.prisma`.
@@ -69,9 +73,11 @@ Use `DataTable` to keep the same styling and action behavior:
   ```
 
 ## Auth flow summary
-- Login: `POST /api/admin-login` verifies password, creates session, sets cookie.
+- Login (admin): `POST /api/admin-login` verifies password, creates **admin** session, sets cookie.
+- Login (participant): `POST /api/participant-login` verifies class access code, creates **participant** session, sets cookie.
 - Logout: `POST /api/logout` deletes session and clears cookie.
 - Admin pages: `app/admin/layout.tsx` redirects to `/admin-login` when no valid session.
+- Participant app: `app/app/layout.tsx` redirects to `/` when no valid participant session.
 
 ## Seeds / local setup
 1) `docker compose up -d`
@@ -88,3 +94,26 @@ Default admin:
 - Use shadcn components via CLI (e.g. `npx shadcn@latest add <component>`).
 - Keep table/list layouts consistent with the admin reference design.
 
+## ImagiCharm playground (participant app)
+- Editor + emulator live in `/app`.
+- Python is executed **client-side** using Pyodide:
+  - Loader: `lib/pyodide/loader.ts`
+  - Python shim for `open_imagilib` / `imagilib`: `lib/imagicharm/python.ts`
+  - Runtime bridge: `lib/imagicharm/runtime.ts`
+  - Types: `lib/imagicharm/types.ts`
+- Emulator UI: `components/imagicharm/Emulator.tsx`
+- Editor UI: `components/imagicharm/Editor.tsx`
+- Playground wrapper: `components/imagicharm/Playground.tsx`
+- Tooltips/completions/signatures:
+  - `lib/imagicharm/signatures.ts`
+  - `lib/imagicharm/completions.ts`
+  - `lib/imagicharm/tooltips.ts`
+
+## Tests
+- Test runner: `vitest` (`npm run test`)
+- Example test: `tests/imagicharm/emulator.test.tsx`
+
+## Notes / gotchas
+- Pyodide returns Maps for dicts; runtime normalizes them in `lib/imagicharm/runtime.ts`.
+- Emulation updates every frame; keep Editor memoized to avoid tooltip flicker.
+- Only use `render()` in Python to push frames to the emulator.
