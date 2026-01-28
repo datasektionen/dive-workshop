@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 
-import { createSession, getSessionCookieName } from "@/lib/auth"
+import { createAdminSession, getSessionCookieName } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 export async function POST(request: Request) {
@@ -35,10 +35,10 @@ export async function POST(request: Request) {
   }
 
   await prisma.session.deleteMany({
-    where: { adminId: admin.id },
+    where: { adminId: admin.id, type: "admin" },
   })
 
-  const { token, expiresAt } = await createSession(admin.id)
+  const { token, expiresAt } = await createAdminSession(admin.id)
   const response = NextResponse.json({ ok: true })
 
   response.cookies.set(getSessionCookieName(), token, {

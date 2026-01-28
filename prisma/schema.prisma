@@ -18,12 +18,14 @@ model Admin {
 
 model Session {
   id        String   @id @default(cuid())
-  adminId   String
+  type      String
+  adminId   String?
+  name      String?
   tokenHash String   @unique
   createdAt DateTime @default(now())
   expiresAt DateTime
 
-  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  admin Admin? @relation(fields: [adminId], references: [id], onDelete: Cascade)
 }
 
 model Course {
