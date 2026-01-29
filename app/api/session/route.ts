@@ -9,5 +9,8 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 })
   }
 
-  return NextResponse.json({ name: participant.name })
+  return NextResponse.json({
+    name: participant.name,
+    classId: participant.classId,
+  })
 }

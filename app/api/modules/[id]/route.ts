@@ -15,16 +15,17 @@ export async function GET(
 
   const { id } = await params
 
-  const course = await prisma.course.findUnique({
+  const moduleItem = await prisma.module.findUnique({
     where: { id },
     select: {
       id: true,
       name: true,
+      title: true,
       description: true,
       createdAt: true,
-      modules: {
+      blocks: {
         select: {
-          moduleId: true,
+          blockId: true,
           order: true,
         },
         orderBy: { order: "asc" },
@@ -32,11 +33,11 @@ export async function GET(
     },
   })
 
-  if (!course) {
-    return NextResponse.json({ error: "Course not found." }, { status: 404 })
+  if (!moduleItem) {
+    return NextResponse.json({ error: "Module not found." }, { status: 404 })
   }
 
-  return NextResponse.json({ course })
+  return NextResponse.json({ module: moduleItem })
 }
 
 export async function PATCH(
@@ -51,14 +52,15 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { name, description, moduleIds } = body ?? {}
+  const { name, title, description, blockIds } = body ?? {}
 
   const data: {
     name?: string
+    title?: string
     description?: string
-    modules?: {
+    blocks?: {
       deleteMany: Record<string, never>
-      create: { moduleId: string; order: number }[]
+      create: { blockId: string }[]
     }
   } = {}
 
@@ -66,17 +68,21 @@ export async function PATCH(
     data.name = name.trim()
   }
 
+  if (typeof title === "string" && title.trim()) {
+    data.title = title.trim()
+  }
+
   if (typeof description === "string") {
     data.description = description.trim()
   }
 
-  if (Array.isArray(moduleIds)) {
-    const modules = moduleIds.filter(
-      (moduleId) => typeof moduleId === "string"
+  if (Array.isArray(blockIds)) {
+    const blocks = blockIds.filter(
+      (blockId) => typeof blockId === "string"
     ) as string[]
-    data.modules = {
+    data.blocks = {
       deleteMany: {},
-      create: modules.map((moduleId, index) => ({ moduleId, order: index })),
+      create: blocks.map((blockId, index) => ({ blockId, order: index })),
     }
   }
 
@@ -85,18 +91,22 @@ export async function PATCH(
   }
 
   try {
-    const course = await prisma.course.update({
+    const moduleItem = await prisma.module.update({
       where: { id },
       data,
       select: {
         id: true,
         name: true,
+        title: true,
         description: true,
         createdAt: true,
+        blocks: {
+          select: { blockId: true, order: true },
+          orderBy: { order: "asc" },
+        },
       },
     })
-
-    return NextResponse.json({ course })
+    return NextResponse.json({ module: moduleItem })
   } catch (error) {
     return NextResponse.json({ error: "Update failed." }, { status: 400 })
   }
@@ -115,9 +125,9 @@ export async function DELETE(
   const { id } = await params
 
   try {
-    await prisma.course.delete({ where: { id } })
+    await prisma.module.delete({ where: { id } })
   } catch (error) {
-    return NextResponse.json({ error: "Course not found." }, { status: 404 })
+    return NextResponse.json({ error: "Module not found." }, { status: 404 })
   }
 
   return NextResponse.json({ ok: true })

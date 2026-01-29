@@ -64,7 +64,7 @@ export async function getAdminFromRequest() {
   return getAdminFromSessionToken(token)
 }
 
-export async function createParticipantSession(name: string) {
+export async function createParticipantSession(name: string, classId: string) {
   const token = crypto.randomBytes(32).toString("hex")
   const tokenHash = hashToken(token)
   const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000)
@@ -73,6 +73,7 @@ export async function createParticipantSession(name: string) {
     data: {
       type: PARTICIPANT_SESSION_TYPE,
       name,
+      classId,
       tokenHash,
       expiresAt,
     },
@@ -100,7 +101,7 @@ export async function getParticipantFromSessionToken(token: string | undefined) 
     return null
   }
 
-  return { name: session.name ?? "Participant" }
+  return { name: session.name ?? "Participant", classId: session.classId ?? null }
 }
 
 export async function getParticipantFromRequest() {

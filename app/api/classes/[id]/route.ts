@@ -19,6 +19,7 @@ export async function GET(
     where: { id },
     select: {
       id: true,
+      title: true,
       name: true,
       description: true,
       accessCode: true,
@@ -46,15 +47,19 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { name, description, accessCode, courseId } = body ?? {}
+  const { title, name, description, accessCode, courseId } = body ?? {}
 
   const data: {
+    title?: string
     name?: string
     description?: string
     accessCode?: string
     courseId?: string
   } = {}
 
+  if (typeof title === "string" && title.trim()) {
+    data.title = title.trim()
+  }
   if (typeof name === "string" && name.trim()) {
     data.name = name.trim()
   }
@@ -81,6 +86,7 @@ export async function PATCH(
       data,
       select: {
         id: true,
+        title: true,
         name: true,
         description: true,
         accessCode: true,

@@ -124,3 +124,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+.cm-tooltip {
+  border: solid !important;
+  border-radius: calc(var(--radius) - 2px);
+}

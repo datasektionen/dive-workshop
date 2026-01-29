@@ -2,14 +2,14 @@
 
 import * as React from "react"
 
-import { ClassForm } from "@/components/admin/forms/class-form"
+import { BlockForm } from "@/components/admin/forms/block-form"
 
-export default function EditClassPage({
+export default function EditBlockPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
-  const [classId, setClassId] = React.useState<string | null>(null)
+  const [blockId, setBlockId] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     let active = true
@@ -17,7 +17,7 @@ export default function EditClassPage({
     async function resolveParams() {
       const { id } = await params
       if (active) {
-        setClassId(id)
+        setBlockId(id)
       }
     }
 
@@ -28,9 +28,9 @@ export default function EditClassPage({
     }
   }, [params])
 
-  if (!classId) {
+  if (!blockId) {
     return <p className="text-sm text-muted-foreground">Loading...</p>
   }
 
-  return <ClassForm classId={classId} />
+  return <BlockForm blockId={blockId} />
 }

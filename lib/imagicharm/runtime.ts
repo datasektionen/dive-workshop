@@ -7,6 +7,23 @@ import { normalizeMatrix } from "@/lib/imagicharm/utils"
 
 type RenderHandler = (matrix: Matrix) => void
 
+const IMAGI_IMPORT_LINE = "from open_imagilib.emulator import *"
+const IMAGI_RENDER_CALL = "render()"
+
+function withImagiPreludeAndRender(code: string) {
+  let result = code.trimEnd()
+  if (!result.includes(IMAGI_IMPORT_LINE)) {
+    result = `${IMAGI_IMPORT_LINE}\n\n${result}`
+  }
+  const renderRegex = /(^|\n)\s*render\(\)\s*(#.*)?$/m
+  if (!renderRegex.test(result)) {
+    result = `${result}\n\n${IMAGI_RENDER_CALL}\n`
+  } else {
+    result = `${result}\n`
+  }
+  return result
+}
+
 function getFrameValue(frame: any, key: string) {
   if (!frame) return undefined
   if (frame instanceof Map) {
@@ -108,6 +125,6 @@ export class ImagiCharmRuntime {
     }
 
     await this.pyodide.runPythonAsync(IMAGI_PY)
-    await this.pyodide.runPythonAsync(code)
+    await this.pyodide.runPythonAsync(withImagiPreludeAndRender(code))
   }
 }

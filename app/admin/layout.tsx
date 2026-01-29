@@ -1,11 +1,12 @@
 import Link from "next/link"
 import {
   BookOpenIcon,
+  BoxesIcon,
+  GraduationCapIcon,
   LayoutDashboardIcon,
+  LayoutGridIcon,
   LayersIcon,
   SearchIcon,
-  SettingsIcon,
-  ShieldIcon,
   UsersIcon,
 } from "lucide-react"
 
@@ -32,16 +33,18 @@ import { getAdminFromSessionToken, getSessionCookieName } from "@/lib/auth"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
-const navItems = [
+export const dynamic = "force-dynamic"
+
+const generalItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboardIcon },
   { href: "/admin/admins", label: "Admins", icon: UsersIcon },
-  { href: "/admin/courses", label: "Courses", icon: BookOpenIcon },
-  { href: "/admin/classes", label: "Classes", icon: LayersIcon },
 ] as const
 
-const otherItems = [
-  { href: "/admin/security", label: "Security", icon: ShieldIcon },
-  { href: "/admin/settings", label: "Settings", icon: SettingsIcon },
+const learningItems = [
+  { href: "/admin/classes", label: "Classes", icon: GraduationCapIcon },
+  { href: "/admin/courses", label: "Courses", icon: BookOpenIcon },
+  { href: "/admin/modules", label: "Modules", icon: LayoutGridIcon },
+  { href: "/admin/blocks", label: "Blocks", icon: BoxesIcon },
 ] as const
 
 export default async function AdminLayout({
@@ -74,7 +77,7 @@ export default async function AdminLayout({
               <SidebarGroupLabel>General</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navItems.map((item) => {
+                  {generalItems.map((item) => {
                     const Icon = item.icon
                     return (
                       <SidebarMenuItem key={item.href}>
@@ -91,10 +94,10 @@ export default async function AdminLayout({
               </SidebarGroupContent>
             </SidebarGroup>
             <SidebarGroup>
-              <SidebarGroupLabel>Other</SidebarGroupLabel>
+              <SidebarGroupLabel>Learning</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {otherItems.map((item) => {
+                  {learningItems.map((item) => {
                     const Icon = item.icon
                     return (
                       <SidebarMenuItem key={item.href}>
@@ -111,9 +114,7 @@ export default async function AdminLayout({
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter className="px-4 pb-5 text-xs text-muted-foreground">
-            Admin tools are limited to authorized users.
-          </SidebarFooter>
+          <SidebarFooter className="px-4 pb-5 text-xs text-muted-foreground" />
         </Sidebar>
 
         <SidebarInset className="min-h-screen border-l">

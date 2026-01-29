@@ -11,14 +11,14 @@ import type { Matrix } from "@/lib/imagicharm/types"
 const DEFAULT_CODE = `# Fill the display with a color so you can see output immediately
 for y in range(8):
     for x in range(8):
-        m[y][x] = (255, 80, 20)
+        m[y][x] = (20, 160, 255)
 `
 
 const EMPTY_MATRIX: Matrix = Array.from({ length: 8 }, () =>
   Array.from({ length: 8 }, () => [0, 0, 0] as [number, number, number])
 )
 
-export function Playground() {
+export function LearningCodeTask() {
   const [code, setCode] = React.useState(DEFAULT_CODE)
   const [matrix, setMatrix] = React.useState<Matrix>(EMPTY_MATRIX)
   const [error, setError] = React.useState("")
@@ -43,14 +43,11 @@ export function Playground() {
     try {
       if (!runtimeRef.current) {
         runtimeRef.current = new ImagiCharmRuntime((nextMatrix) => {
-          console.log("[imagi] render handler matrix", nextMatrix)
           setMatrix(nextMatrix)
         })
       }
-      console.log("[imagi] running code")
       await runtimeRef.current.run(code)
     } catch (err) {
-      console.error("[imagi] run error", err)
       setError("Unable to run Python code. Check syntax and try again.")
     } finally {
       setIsRunning(false)
@@ -58,29 +55,19 @@ export function Playground() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Code Editor</h2>
-            <p className="text-sm text-muted-foreground">
-              Write imagiCharm-style Python programs and run them locally.
-            </p>
-          </div>
-          <Button onClick={handleRun} disabled={isRunning}>
-            {isRunning ? "Running..." : "Run code"}
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">Code workspace</p>
+          <Button onClick={handleRun} size="sm" disabled={isRunning}>
+            {isRunning ? "Running..." : "Run"}
           </Button>
         </div>
         <Editor value={code} onChange={setCode} />
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </div>
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">Emulator</h2>
-          <p className="text-sm text-muted-foreground">
-            8x8 LED matrix preview.
-          </p>
-        </div>
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Emulator</p>
         <Emulator matrix={matrix} />
       </div>
     </div>

@@ -10,25 +10,23 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 })
   }
 
-  const classes = await prisma.class.findMany({
+  const modules = await prisma.module.findMany({
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
-      title: true,
       name: true,
+      title: true,
       description: true,
-      accessCode: true,
       createdAt: true,
-      course: {
+      _count: {
         select: {
-          id: true,
-          name: true,
+          blocks: true,
         },
       },
     },
   })
 
-  return NextResponse.json({ classes })
+  return NextResponse.json({ modules })
 }
 
 export async function POST(request: Request) {
@@ -39,47 +37,42 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { title, name, description, accessCode, courseId } = body ?? {}
-
-  if (typeof title !== "string" || !title.trim()) {
-    return NextResponse.json({ error: "Title is required." }, { status: 400 })
-  }
+  const { name, title, description, blockIds } = body ?? {}
 
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 })
   }
 
-  if (typeof accessCode !== "string" || !accessCode.trim()) {
+  if (typeof title !== "string" || !title.trim()) {
     return NextResponse.json(
-      { error: "Access code is required." },
+      { error: "Title is required." },
       { status: 400 }
     )
   }
 
-  if (typeof courseId !== "string" || !courseId.trim()) {
-    return NextResponse.json({ error: "Course is required." }, { status: 400 })
-  }
+  const blocks =
+    Array.isArray(blockIds) && blockIds.length
+      ? blockIds.filter((blockId) => typeof blockId === "string")
+      : []
 
-  const classItem = await prisma.class.create({
+  const moduleItem = await prisma.module.create({
     data: {
-      title: title.trim(),
       name: name.trim(),
+      title: title.trim(),
       description: typeof description === "string" ? description.trim() : "",
-      accessCode: accessCode.trim(),
-      courseId: courseId.trim(),
+      blocks: {
+        create: blocks.map((blockId, index) => ({ blockId, order: index })),
+      },
     },
     select: {
       id: true,
-      title: true,
       name: true,
+      title: true,
       description: true,
-      accessCode: true,
       createdAt: true,
-      course: {
-        select: { id: true, name: true },
-      },
+      _count: { select: { blocks: true } },
     },
   })
 
-  return NextResponse.json({ class: classItem })
+  return NextResponse.json({ module: moduleItem })
 }

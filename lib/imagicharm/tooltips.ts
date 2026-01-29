@@ -125,7 +125,7 @@ function getActiveParamIndex(state: EditorState, pos: number): number {
 
 function buildTooltipDom(signature: { label: string; docs: string }) {
   const dom = document.createElement("div");
-  dom.className = "rounded-md border !bg-background px-3 py-2 text-xs shadow";
+  dom.className = "rounded-md !border !bg-background px-3 py-2 text-xs shadow";
   dom.innerHTML = `
     <div class="font-semibold">${signature.label}</div>
     <div class="text-muted-foreground">${signature.docs}</div>

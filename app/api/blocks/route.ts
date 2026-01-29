@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { getAdminFromRequest } from "@/lib/auth"
+import { isBlockType } from "@/lib/content/types"
 import { prisma } from "@/lib/prisma"
 
 export async function GET() {
@@ -10,25 +11,18 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 })
   }
 
-  const classes = await prisma.class.findMany({
+  const blocks = await prisma.block.findMany({
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
+      type: true,
       title: true,
-      name: true,
       description: true,
-      accessCode: true,
       createdAt: true,
-      course: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
     },
   })
 
-  return NextResponse.json({ classes })
+  return NextResponse.json({ blocks })
 }
 
 export async function POST(request: Request) {
@@ -39,47 +33,32 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { title, name, description, accessCode, courseId } = body ?? {}
+  const { type, title, description, body: content } = body ?? {}
 
   if (typeof title !== "string" || !title.trim()) {
     return NextResponse.json({ error: "Title is required." }, { status: 400 })
   }
 
-  if (typeof name !== "string" || !name.trim()) {
-    return NextResponse.json({ error: "Name is required." }, { status: 400 })
+  if (!isBlockType(type)) {
+    return NextResponse.json({ error: "Type is required." }, { status: 400 })
   }
 
-  if (typeof accessCode !== "string" || !accessCode.trim()) {
-    return NextResponse.json(
-      { error: "Access code is required." },
-      { status: 400 }
-    )
-  }
-
-  if (typeof courseId !== "string" || !courseId.trim()) {
-    return NextResponse.json({ error: "Course is required." }, { status: 400 })
-  }
-
-  const classItem = await prisma.class.create({
+  const block = await prisma.block.create({
     data: {
+      type,
       title: title.trim(),
-      name: name.trim(),
       description: typeof description === "string" ? description.trim() : "",
-      accessCode: accessCode.trim(),
-      courseId: courseId.trim(),
+      body: typeof content === "string" ? content : "",
     },
     select: {
       id: true,
+      type: true,
       title: true,
-      name: true,
       description: true,
-      accessCode: true,
+      body: true,
       createdAt: true,
-      course: {
-        select: { id: true, name: true },
-      },
     },
   })
 
-  return NextResponse.json({ class: classItem })
+  return NextResponse.json({ block })
 }

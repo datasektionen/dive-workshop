@@ -3,48 +3,36 @@
 import * as React from "react"
 import Link from "next/link"
 
-import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/admin/data-table"
 import { PageHeader } from "@/components/admin/page-header"
+import { Button } from "@/components/ui/button"
+import type { ModuleSummary } from "@/lib/content/types"
 
-type ClassItem = {
-  id: string
-  title: string
-  name: string
-  description: string
-  accessCode: string
-  createdAt: string
-  course: {
-    id: string
-    name: string
-  }
-}
-
-export default function ClassesPage() {
-  const [classes, setClasses] = React.useState<ClassItem[]>([])
+export default function ModulesPage() {
+  const [modules, setModules] = React.useState<ModuleSummary[]>([])
   const [error, setError] = React.useState("")
 
   React.useEffect(() => {
     let active = true
 
-    async function loadClasses() {
+    async function loadModules() {
       try {
-        const response = await fetch("/api/classes")
+        const response = await fetch("/api/modules")
         if (!response.ok) {
-          throw new Error("Failed to load classes.")
+          throw new Error("Failed to load modules.")
         }
-        const data = (await response.json()) as { classes: ClassItem[] }
+        const data = (await response.json()) as { modules: ModuleSummary[] }
         if (active) {
-          setClasses(data.classes)
+          setModules(data.modules)
         }
       } catch (err) {
         if (active) {
-          setError("Unable to load classes.")
+          setError("Unable to load modules.")
         }
       }
     }
 
-    loadClasses()
+    loadModules()
 
     return () => {
       active = false
@@ -54,26 +42,26 @@ export default function ClassesPage() {
   async function handleDelete(id: string) {
     setError("")
     try {
-      const response = await fetch(`/api/classes/${id}`, {
+      const response = await fetch(`/api/modules/${id}`, {
         method: "DELETE",
       })
       if (!response.ok) {
         throw new Error("Delete failed.")
       }
-      setClasses((prev) => prev.filter((item) => item.id !== id))
+      setModules((prev) => prev.filter((item) => item.id !== id))
     } catch (err) {
-      setError("Unable to delete class.")
+      setError("Unable to delete module.")
     }
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Classes"
-        description="Track access codes and course assignments."
+        title="Modules"
+        description="Group blocks into reusable modules."
         action={
           <Button size="sm" asChild>
-            <Link href="/admin/classes/new">New class</Link>
+            <Link href="/admin/modules/new">New module</Link>
           </Button>
         }
       />
@@ -81,26 +69,26 @@ export default function ClassesPage() {
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <DataTable
-        data={classes}
-        emptyText="No classes found."
+        data={modules}
+        emptyText="No modules found."
         columns={[
           {
-            header: "Title",
-            cell: (item) => <span className="font-medium">{item.title}</span>,
+            header: "Name",
+            cell: (item) => <span className="font-medium">{item.name}</span>,
           },
           {
-            header: "Course",
+            header: "Title",
             cell: (item) => (
               <span className="text-muted-foreground">
-                {item.course?.name ?? "-"}
+                {item.title || "-"}
               </span>
             ),
           },
           {
-            header: "Access code",
+            header: "Blocks",
             cell: (item) => (
-              <span className="font-mono text-xs text-muted-foreground">
-                {item.accessCode}
+              <span className="text-muted-foreground">
+                {item._count?.blocks ?? 0}
               </span>
             ),
           },
@@ -110,9 +98,9 @@ export default function ClassesPage() {
           },
         ]}
         actions={{
-          editHref: (item) => `/admin/classes/${item.id}`,
+          editHref: (item) => `/admin/modules/${item.id}`,
           onDelete: (item) => handleDelete(item.id),
-          deleteDialogTitle: "Delete class?",
+          deleteDialogTitle: "Delete module?",
           deleteDialogDescription: "This action cannot be undone.",
         }}
       />

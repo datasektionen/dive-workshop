@@ -20,12 +20,14 @@ model Session {
   id        String   @id @default(cuid())
   type      String
   adminId   String?
+  classId   String?
   name      String?
   tokenHash String   @unique
   createdAt DateTime @default(now())
   expiresAt DateTime
 
   admin Admin? @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  class Class? @relation(fields: [classId], references: [id], onDelete: Cascade)
 }
 
 model Course {
@@ -35,10 +37,12 @@ model Course {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   classes     Class[]
+  modules     CourseModule[]
 }
 
 model Class {
   id          String   @id @default(cuid())
+  title       String
   name        String
   description String
   accessCode  String
@@ -47,4 +51,56 @@ model Class {
   updatedAt   DateTime @updatedAt
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  sessions Session[]
+}
+
+enum BlockType {
+  text
+  code
+}
+
+model Module {
+  id           String        @id @default(cuid())
+  name         String
+  title        String
+  description  String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  blocks       ModuleBlock[]
+  courses      CourseModule[]
+}
+
+model Block {
+  id          String        @id @default(cuid())
+  type        BlockType
+  title       String
+  description String
+  body        String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  modules     ModuleBlock[]
+}
+
+model ModuleBlock {
+  moduleId  String
+  blockId   String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  block  Block  @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@id([moduleId, blockId])
+}
+
+model CourseModule {
+  courseId String
+  moduleId String
+  order    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, moduleId])
 }

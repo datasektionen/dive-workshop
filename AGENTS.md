@@ -8,9 +8,12 @@ Project: Dive Workshop (Next.js App Router + Prisma + Postgres)
   - Auth: `/admin-login`
   - Admin: `/admin/*`
   - Participant app: `/app`
+  - Learning API: `/api/learning`
   - API: `app/api/*`
 - UI components: `components/`
   - Admin utilities: `components/admin/*`
+    - Shared forms: `components/admin/forms/*`
+    - Reorder picker: `components/admin/orderable-picker.tsx`
   - ImagiCharm UI: `components/imagicharm/*`
   - Shadcn UI: `components/ui/*`
 - Database:
@@ -21,6 +24,7 @@ Project: Dive Workshop (Next.js App Router + Prisma + Postgres)
 
 ## Core conventions
 - **Auth**: Session cookie `dive_session` (httpOnly). Session records stored in `Session` table.
+- **Participant sessions**: `Session.classId` ties participants to their class.
 - **Server access**: Admin area is protected in `app/admin/layout.tsx` (redirects if no session).
 - **API access**: All admin APIs check auth via `getAdminFromRequest()` in `lib/auth.ts`.
 - **Naming**: CamelCase in Prisma models/fields (e.g. `fullName`).
@@ -74,10 +78,22 @@ Use `DataTable` to keep the same styling and action behavior:
 
 ## Auth flow summary
 - Login (admin): `POST /api/admin-login` verifies password, creates **admin** session, sets cookie.
-- Login (participant): `POST /api/participant-login` verifies class access code, creates **participant** session, sets cookie.
+- Login (participant): `POST /api/participant-login` verifies class access code, creates **participant** session with `classId`, sets cookie.
 - Logout: `POST /api/logout` deletes session and clears cookie.
 - Admin pages: `app/admin/layout.tsx` redirects to `/admin-login` when no valid session.
 - Participant app: `app/app/layout.tsx` redirects to `/` when no valid participant session.
+
+## Modules + blocks
+- **Modules**: `Module` has `name` (admin-only) and `title` (learner-facing), plus ordered blocks via `ModuleBlock.order`.
+- **Blocks**: `Block` has `type` (`text` | `code`), `title`, `description`, `body` (rich text).
+- **Course modules**: `Course` ↔ `Module` is many-to-many via `CourseModule.order` (order matters).
+- **Admin forms**: New/edit pages now use shared form components in `components/admin/forms/*`.
+- **Reordering**: Use `components/admin/orderable-picker.tsx` for ordered selection UI.
+
+## Participant learning app
+- Learning content is derived from `/api/learning` (class → course → ordered modules → ordered blocks).
+- Sidebar groups by module title; blocks are consumed in order with Back/Next.
+- Code blocks show rich text + code editor/emulator (`components/imagicharm/learning-code-task.tsx`).
 
 ## Seeds / local setup
 1) `docker compose up -d`
@@ -104,6 +120,7 @@ Default admin:
 - Emulator UI: `components/imagicharm/Emulator.tsx`
 - Editor UI: `components/imagicharm/Editor.tsx`
 - Playground wrapper: `components/imagicharm/Playground.tsx`
+- Learning code task: `components/imagicharm/learning-code-task.tsx`
 - Tooltips/completions/signatures:
   - `lib/imagicharm/signatures.ts`
   - `lib/imagicharm/completions.ts`

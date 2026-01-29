@@ -1,15 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { ModuleForm } from "@/components/admin/forms/module-form"
 
-import { ClassForm } from "@/components/admin/forms/class-form"
-
-export default function EditClassPage({
+export default function EditModulePage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
-  const [classId, setClassId] = React.useState<string | null>(null)
+  const [moduleId, setModuleId] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     let active = true
@@ -17,7 +16,7 @@ export default function EditClassPage({
     async function resolveParams() {
       const { id } = await params
       if (active) {
-        setClassId(id)
+        setModuleId(id)
       }
     }
 
@@ -28,9 +27,9 @@ export default function EditClassPage({
     }
   }, [params])
 
-  if (!classId) {
+  if (!moduleId) {
     return <p className="text-sm text-muted-foreground">Loading...</p>
   }
 
-  return <ClassForm classId={classId} />
+  return <ModuleForm moduleId={moduleId} />
 }

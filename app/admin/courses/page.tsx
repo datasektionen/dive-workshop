@@ -6,16 +6,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/admin/data-table"
 import { PageHeader } from "@/components/admin/page-header"
-
-type Course = {
-  id: string
-  name: string
-  description: string
-  createdAt: string
-}
+import type { CourseSummary } from "@/lib/content/types"
 
 export default function CoursesPage() {
-  const [courses, setCourses] = React.useState<Course[]>([])
+  const [courses, setCourses] = React.useState<CourseSummary[]>([])
   const [error, setError] = React.useState("")
 
   React.useEffect(() => {
@@ -27,7 +21,7 @@ export default function CoursesPage() {
         if (!response.ok) {
           throw new Error("Failed to load courses.")
         }
-        const data = (await response.json()) as { courses: Course[] }
+        const data = (await response.json()) as { courses: CourseSummary[] }
         if (active) {
           setCourses(data.courses)
         }
