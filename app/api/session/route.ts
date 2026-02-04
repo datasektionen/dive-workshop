@@ -10,7 +10,11 @@ export async function GET() {
   }
 
   return NextResponse.json({
+    sessionId: participant.sessionId,
     name: participant.name,
     classId: participant.classId,
+    isPreview: participant.isPreview,
+    participantCode: participant.participantCode,
+    participantId: participant.participantId,
   })
 }

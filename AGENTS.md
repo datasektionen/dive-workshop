@@ -1,12 +1,18 @@
 # AGENTS.md
 
-Project: Dive Workshop (Next.js App Router + Prisma + Postgres)
+Project: Dive Workshop (Next.js App Router + Prisma + Postgres + WS)
 
 ## Quick map
 - App routes: `app/`
-  - Public: `/` (access code)
+  - Public: `/` (participant login + code login)
   - Auth: `/admin-login`
   - Admin: `/admin/*`
+    - Dashboard: `/admin`
+    - Classes: `/admin/classes`
+    - Class overview: `/admin/classes/[id]/overview`
+    - Participants (global): `/admin/participants`
+    - Admins: `/admin/admins`
+    - Account: `/admin/account`
   - Participant app: `/app`
   - Learning API: `/api/learning`
   - API: `app/api/*`
@@ -14,6 +20,8 @@ Project: Dive Workshop (Next.js App Router + Prisma + Postgres)
   - Admin utilities: `components/admin/*`
     - Shared forms: `components/admin/forms/*`
     - Reorder picker: `components/admin/orderable-picker.tsx`
+  - Participant sidebar account: `components/participant-sidebar-account.tsx`
+  - Admin sidebar account: `components/admin/admin-sidebar-account.tsx`
   - ImagiCharm UI: `components/imagicharm/*`
   - Shadcn UI: `components/ui/*`
 - Database:
@@ -21,11 +29,15 @@ Project: Dive Workshop (Next.js App Router + Prisma + Postgres)
   - Config: `prisma.config.ts`
   - Seed: `prisma/seed.mjs`
   - Migrations: `prisma/migrations/*`
+- Runtime:
+  - Custom server with WebSocket: `server.mjs` (used by `npm run dev`)
+  - WS endpoint: `ws://<host>/ws`
 
 ## Core conventions
-- **Auth**: Session cookie `dive_session` (httpOnly). Session records stored in `Session` table.
-- **Participant sessions**: `Session.classId` ties participants to their class.
-- **Server access**: Admin area is protected in `app/admin/layout.tsx` (redirects if no session).
+- **Auth cookies**: Session cookie `dive_session` (httpOnly). Preview cookie `dive_preview` for admin “view as participant”.
+- **Sessions**: Stored in `Session` table; `Session.participantId` links to `Participant`.
+- **Participants**: Persisted in `Participant` table (NOT deleted on logout). `Participant.code` is an 8-char unique code.
+- **Server access**: Admin area protected in `app/admin/layout.tsx` (redirects if no admin session).
 - **API access**: All admin APIs check auth via `getAdminFromRequest()` in `lib/auth.ts`.
 - **Naming**: CamelCase in Prisma models/fields (e.g. `fullName`).
 - **UI reuse**: Use `components/admin/page-header.tsx` and `components/admin/data-table.tsx` for list pages.
@@ -78,37 +90,35 @@ Use `DataTable` to keep the same styling and action behavior:
 
 ## Auth flow summary
 - Login (admin): `POST /api/admin-login` verifies password, creates **admin** session, sets cookie.
-- Login (participant): `POST /api/participant-login` verifies class access code, creates **participant** session with `classId`, sets cookie.
+- Login (participant - new): `POST /api/participant-login` verifies class access code, creates **Participant** + session.
+- Login (participant - code): `POST /api/participant-login-code` verifies participant code, creates a new session.
 - Logout: `POST /api/logout` deletes session and clears cookie.
 - Admin pages: `app/admin/layout.tsx` redirects to `/admin-login` when no valid session.
 - Participant app: `app/app/layout.tsx` redirects to `/` when no valid participant session.
+- Preview mode: Admin overview can “view as participant” via `dive_preview` cookie and a return-to-admin link.
 
 ## Modules + blocks
 - **Modules**: `Module` has `name` (admin-only) and `title` (learner-facing), plus ordered blocks via `ModuleBlock.order`.
 - **Blocks**: `Block` has `type` (`text` | `code`), `title`, `description`, `body` (rich text).
 - **Course modules**: `Course` ↔ `Module` is many-to-many via `CourseModule.order` (order matters).
-- **Admin forms**: New/edit pages now use shared form components in `components/admin/forms/*`.
+- **Admin forms**: New/edit pages use shared form components in `components/admin/forms/*`.
 - **Reordering**: Use `components/admin/orderable-picker.tsx` for ordered selection UI.
 
 ## Participant learning app
 - Learning content is derived from `/api/learning` (class → course → ordered modules → ordered blocks).
 - Sidebar groups by module title; blocks are consumed in order with Back/Next.
 - Code blocks show rich text + code editor/emulator (`components/imagicharm/learning-code-task.tsx`).
+- Code persistence: `/api/code` saves code per participant + block.
+- Events: `/api/events` records block views and code runs per participant.
 
-## Seeds / local setup
-1) `docker compose up -d`
-2) `npx prisma migrate dev --name init`
-3) `npx prisma generate`
-4) `npm run prisma:seed`
-5) `npm run dev`
+## Admin class overview
+- Overview page: `/admin/classes/[id]/overview`
+- Shows stats, participants, live code, and access codes.
+- Live code uses WebSocket `/ws` and falls back to stored code from `/api/admin/classes/[id]/participants/[participantId]/code`.
 
-Default admin:
-- Email: `test@example.com`
-- Password: `test123`
-
-## UI additions
-- Use shadcn components via CLI (e.g. `npx shadcn@latest add <component>`).
-- Keep table/list layouts consistent with the admin reference design.
+## Date/time
+- Class `startDate`/`endDate` are `DateTime?` stored in UTC.
+- UI uses shadcn date + time picker components and displays in local timezone via `toLocaleString()`.
 
 ## ImagiCharm playground (participant app)
 - Editor + emulator live in `/app`.
@@ -125,6 +135,22 @@ Default admin:
   - `lib/imagicharm/signatures.ts`
   - `lib/imagicharm/completions.ts`
   - `lib/imagicharm/tooltips.ts`
+- CodeMirror theme helper: `lib/imagicharm/editor-theme.ts`
+
+## UI additions
+- Use shadcn components via CLI (e.g. `npx shadcn@latest add <component>`).
+- Keep table/list layouts consistent with the admin reference design.
+
+## Seeds / local setup
+1) `docker compose up -d`
+2) `npx prisma migrate dev --name init`
+3) `npx prisma generate`
+4) `npm run prisma:seed`
+5) `npm run dev`
+
+Default admin:
+- Email: `test@example.com`
+- Password: `test123`
 
 ## Tests
 - Test runner: `vitest` (`npm run test`)
@@ -134,3 +160,4 @@ Default admin:
 - Pyodide returns Maps for dicts; runtime normalizes them in `lib/imagicharm/runtime.ts`.
 - Emulation updates every frame; keep Editor memoized to avoid tooltip flicker.
 - Only use `render()` in Python to push frames to the emulator.
+- For live code, WS server is in `server.mjs`; run via `npm run dev` (not `next dev`).

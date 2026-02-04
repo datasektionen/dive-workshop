@@ -17,7 +17,7 @@ type EmulatorProps = {
 export function Emulator({ matrix = EMPTY_MATRIX, className }: EmulatorProps) {
   return (
     <div className="flex justify-start">
-      <div className={cn("rounded inline-block border bg-background pt-2 pl-3 pb-4 pr-4 shadow-sm", className)}>
+      <div className={cn("inline-flex items-center justify-center bg-background px-2 py-2", className)}>
         <div className="grid grid-cols-[auto_1fr] gap-2">
           <div />
           <div className="grid grid-cols-8 gap-1 text-[10px] text-muted-foreground">

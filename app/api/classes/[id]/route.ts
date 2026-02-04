@@ -24,6 +24,8 @@ export async function GET(
       description: true,
       accessCode: true,
       courseId: true,
+      startDate: true,
+      endDate: true,
       createdAt: true,
     },
   })
@@ -47,7 +49,8 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { title, name, description, accessCode, courseId } = body ?? {}
+  const { title, name, description, accessCode, courseId, startDate, endDate } =
+    body ?? {}
 
   const data: {
     title?: string
@@ -55,6 +58,8 @@ export async function PATCH(
     description?: string
     accessCode?: string
     courseId?: string
+    startDate?: Date | null
+    endDate?: Date | null
   } = {}
 
   if (typeof title === "string" && title.trim()) {
@@ -76,6 +81,36 @@ export async function PATCH(
     data.courseId = courseId.trim()
   }
 
+  if (typeof startDate === "string") {
+    if (!startDate.trim()) {
+      data.startDate = null
+    } else {
+      const parsed = new Date(startDate)
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          { error: "Start date is invalid." },
+          { status: 400 }
+        )
+      }
+      data.startDate = parsed
+    }
+  }
+
+  if (typeof endDate === "string") {
+    if (!endDate.trim()) {
+      data.endDate = null
+    } else {
+      const parsed = new Date(endDate)
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          { error: "End date is invalid." },
+          { status: 400 }
+        )
+      }
+      data.endDate = parsed
+    }
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "No changes provided." }, { status: 400 })
   }
@@ -91,6 +126,8 @@ export async function PATCH(
         description: true,
         accessCode: true,
         courseId: true,
+        startDate: true,
+        endDate: true,
         createdAt: true,
       },
     })

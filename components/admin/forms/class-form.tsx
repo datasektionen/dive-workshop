@@ -23,10 +23,24 @@ type ClassDetail = {
   description: string
   accessCode: string
   courseId: string
+  startDate: string | null
+  endDate: string | null
 }
 
 type ClassFormProps = {
   classId?: string
+}
+
+function toLocalDateTimeInput(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+  const pad = (num: number) => String(num).padStart(2, "0")
+  const yyyy = date.getFullYear()
+  const mm = pad(date.getMonth() + 1)
+  const dd = pad(date.getDate())
+  const hh = pad(date.getHours())
+  const min = pad(date.getMinutes())
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`
 }
 
 export function ClassForm({ classId }: ClassFormProps) {
@@ -39,6 +53,8 @@ export function ClassForm({ classId }: ClassFormProps) {
   const [name, setName] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [accessCode, setAccessCode] = React.useState("")
+  const [startDate, setStartDate] = React.useState("")
+  const [endDate, setEndDate] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState("")
 
@@ -77,12 +93,24 @@ export function ClassForm({ classId }: ClassFormProps) {
             setDescription(classData.class.description || "")
             setAccessCode(classData.class.accessCode)
             setCourseId(classData.class.courseId)
+            setStartDate(
+              classData.class.startDate
+                ? toLocalDateTimeInput(classData.class.startDate)
+                : ""
+            )
+            setEndDate(
+              classData.class.endDate
+                ? toLocalDateTimeInput(classData.class.endDate)
+                : ""
+            )
           }
         } else if (active) {
           setTitle("")
           setName("")
           setDescription("")
           setAccessCode("")
+          setStartDate("")
+          setEndDate("")
         }
 
         if (active) {
@@ -121,6 +149,8 @@ export function ClassForm({ classId }: ClassFormProps) {
       description,
       accessCode,
       courseId,
+      startDate,
+      endDate,
     }
 
     if (!title.trim()) {
@@ -216,6 +246,26 @@ export function ClassForm({ classId }: ClassFormProps) {
               value={accessCode}
               onChange={(event) => setAccessCode(event.target.value)}
               required
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="startDate">Start date</FieldLabel>
+            <Input
+              id="startDate"
+              name="startDate"
+              type="datetime-local"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="endDate">End date</FieldLabel>
+            <Input
+              id="endDate"
+              name="endDate"
+              type="datetime-local"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
             />
           </Field>
           <Field>

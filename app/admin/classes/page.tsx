@@ -13,6 +13,8 @@ type ClassItem = {
   name: string
   description: string
   accessCode: string
+  startDate: string | null
+  endDate: string | null
   createdAt: string
   course: {
     id: string
@@ -107,6 +109,29 @@ export default function ClassesPage() {
           {
             header: "Created",
             cell: (item) => new Date(item.createdAt).toLocaleDateString(),
+          },
+          {
+            header: "Dates",
+            cell: (item) => (
+              <span className="text-muted-foreground">
+                {item.startDate
+                  ? new Date(item.startDate).toLocaleString()
+                  : "—"}{" "}
+                →{" "}
+                {item.endDate
+                  ? new Date(item.endDate).toLocaleString()
+                  : "—"}
+              </span>
+            ),
+          },
+          {
+            header: "View",
+            cell: (item) => (
+              <Button asChild size="sm" className="px-5">
+                <Link href={`/admin/classes/${item.id}/overview`}>View</Link>
+              </Button>
+            ),
+            className: "w-[120px]",
           },
         ]}
         actions={{

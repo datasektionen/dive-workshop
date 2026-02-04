@@ -18,6 +18,8 @@ export async function GET() {
       name: true,
       description: true,
       accessCode: true,
+      startDate: true,
+      endDate: true,
       createdAt: true,
       course: {
         select: {
@@ -39,7 +41,8 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { title, name, description, accessCode, courseId } = body ?? {}
+  const { title, name, description, accessCode, courseId, startDate, endDate } =
+    body ?? {}
 
   if (typeof title !== "string" || !title.trim()) {
     return NextResponse.json({ error: "Title is required." }, { status: 400 })
@@ -60,6 +63,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Course is required." }, { status: 400 })
   }
 
+  const parsedStart =
+    typeof startDate === "string" && startDate.trim()
+      ? new Date(startDate)
+      : null
+  const parsedEnd =
+    typeof endDate === "string" && endDate.trim() ? new Date(endDate) : null
+
+  if (parsedStart && Number.isNaN(parsedStart.getTime())) {
+    return NextResponse.json(
+      { error: "Start date is invalid." },
+      { status: 400 }
+    )
+  }
+
+  if (parsedEnd && Number.isNaN(parsedEnd.getTime())) {
+    return NextResponse.json(
+      { error: "End date is invalid." },
+      { status: 400 }
+    )
+  }
+
   const classItem = await prisma.class.create({
     data: {
       title: title.trim(),
@@ -67,6 +91,8 @@ export async function POST(request: Request) {
       description: typeof description === "string" ? description.trim() : "",
       accessCode: accessCode.trim(),
       courseId: courseId.trim(),
+      startDate: parsedStart,
+      endDate: parsedEnd,
     },
     select: {
       id: true,
@@ -74,6 +100,8 @@ export async function POST(request: Request) {
       name: true,
       description: true,
       accessCode: true,
+      startDate: true,
+      endDate: true,
       createdAt: true,
       course: {
         select: { id: true, name: true },

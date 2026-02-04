@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import {
   BookOpenIcon,
   BoxesIcon,
@@ -7,10 +8,11 @@ import {
   LayoutGridIcon,
   LayersIcon,
   SearchIcon,
+  UserRoundIcon,
   UsersIcon,
 } from "lucide-react"
 
-import { LogoutButton } from "@/components/logout-button"
+import { AdminSidebarAccount } from "@/components/admin/admin-sidebar-account"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Input } from "@/components/ui/input"
 import {
@@ -37,6 +39,7 @@ export const dynamic = "force-dynamic"
 
 const generalItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboardIcon },
+  { href: "/admin/participants", label: "Participants", icon: UserRoundIcon },
   { href: "/admin/admins", label: "Admins", icon: UsersIcon },
 ] as const
 
@@ -66,9 +69,7 @@ export default async function AdminLayout({
         <Sidebar variant="sidebar" collapsible="offcanvas">
           <SidebarHeader className="px-4 py-5">
             <div className="flex items-center gap-3 text-sm font-semibold">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                D
-              </span>
+              <Image src="/dive.png" alt="Dive" width={30} height={30} />
               Dive Admin
             </div>
           </SidebarHeader>
@@ -114,7 +115,9 @@ export default async function AdminLayout({
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter className="px-4 pb-5 text-xs text-muted-foreground" />
+          <SidebarFooter className="px-4 pb-5">
+            <AdminSidebarAccount name={admin.fullName} email={admin.email} />
+          </SidebarFooter>
         </Sidebar>
 
         <SidebarInset className="min-h-screen border-l">
@@ -127,7 +130,6 @@ export default async function AdminLayout({
                 <Input className="pl-9" placeholder="Search" />
               </div>
               <ThemeToggle />
-              <LogoutButton />
             </div>
           </header>
           <div className="flex-1 px-6 py-6">{children}</div>

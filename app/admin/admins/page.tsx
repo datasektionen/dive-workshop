@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/admin/data-table"
@@ -64,7 +65,11 @@ export default function AdminsPage() {
       <PageHeader
         title="Admins"
         description="Manage admin users and access."
-        action={<Button size="sm">Invite admin</Button>}
+        action={
+          <Button size="sm" asChild>
+            <Link href="/admin/admins/new">Invite admin</Link>
+          </Button>
+        }
       />
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}

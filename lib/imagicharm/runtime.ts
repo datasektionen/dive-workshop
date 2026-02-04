@@ -6,9 +6,15 @@ import type { ImagiFrame, Matrix } from "@/lib/imagicharm/types"
 import { normalizeMatrix } from "@/lib/imagicharm/utils"
 
 type RenderHandler = (matrix: Matrix) => void
+type AnimationHandler = (frames: ImagiFrame[], loopCount: number) => void
+
+type ImagiCharmRuntimeOptions = {
+  onAnimation?: AnimationHandler
+}
 
 const IMAGI_IMPORT_LINE = "from open_imagilib.emulator import *"
 const IMAGI_RENDER_CALL = "render()"
+const SYNTAX_ERROR_NAMES = ["SyntaxError", "IndentationError", "TabError"]
 
 function withImagiPreludeAndRender(code: string) {
   let result = code.trimEnd()
@@ -22,6 +28,54 @@ function withImagiPreludeAndRender(code: string) {
     result = `${result}\n`
   }
   return result
+}
+
+function coerceErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === "string") return error
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
+
+function adjustExecLineNumbers(message: string, offset: number) {
+  if (offset <= 0) return message
+  return message.replace(/(File "<exec>", line )(\d+)/g, (_, prefix, value) => {
+    const nextValue = Math.max(1, Number(value) - offset)
+    return `${prefix}${nextValue}`
+  })
+}
+
+function getInjectedLineOffset(code: string) {
+  return code.includes(IMAGI_IMPORT_LINE) ? 0 : 2
+}
+
+export function getPythonErrorMessage(error: unknown, code: string) {
+  const rawMessage = coerceErrorMessage(error)
+  const adjustedMessage = adjustExecLineNumbers(
+    rawMessage,
+    getInjectedLineOffset(code)
+  )
+  const lines = adjustedMessage.split("\n")
+  const errorLine = [...lines]
+    .reverse()
+    .find((line) =>
+      SYNTAX_ERROR_NAMES.some((name) => line.includes(name))
+    )
+  if (errorLine) {
+    const execLine = adjustedMessage.match(/File "<exec>", line (\d+)/)
+    if (execLine?.[1]) {
+      return `${errorLine} (line ${execLine[1]})`
+    }
+    return errorLine
+  }
+
+  const lastMeaningful = [...lines]
+    .reverse()
+    .find((line) => line.trim().length > 0)
+  return lastMeaningful ?? "Unable to run Python code."
 }
 
 function getFrameValue(frame: any, key: string) {
@@ -44,9 +98,11 @@ export class ImagiCharmRuntime {
   private timers: number[] = []
   private initialized = false
   private renderHandler: RenderHandler
+  private animationHandler?: AnimationHandler
 
-  constructor(renderHandler: RenderHandler) {
+  constructor(renderHandler: RenderHandler, options?: ImagiCharmRuntimeOptions) {
     this.renderHandler = renderHandler
+    this.animationHandler = options?.onAnimation
   }
 
   async init() {
@@ -59,6 +115,7 @@ export class ImagiCharmRuntime {
           console.log("[imagi] render called", { frames, loopCount })
           const jsFrames = toJsValue(frames) as ImagiFrame[]
           console.log("[imagi] render frames converted", jsFrames)
+          this.animationHandler?.(jsFrames, loopCount || 0)
           this.playFrames(jsFrames, loopCount || 0)
         },
       })

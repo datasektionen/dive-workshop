@@ -22,12 +22,17 @@ model Session {
   adminId   String?
   classId   String?
   name      String?
+  participantId String?
   tokenHash String   @unique
   createdAt DateTime @default(now())
   expiresAt DateTime
 
   admin Admin? @relation(fields: [adminId], references: [id], onDelete: Cascade)
   class Class? @relation(fields: [classId], references: [id], onDelete: Cascade)
+  participant Participant? @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  events   ParticipantEvent[]
+  progress ParticipantProgress[]
+  codes    ParticipantCode[]
 }
 
 model Course {
@@ -47,11 +52,32 @@ model Class {
   description String
   accessCode  String
   courseId    String
+  startDate   DateTime?
+  endDate     DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   sessions Session[]
+  participants Participant[]
+  events   ParticipantEvent[]
+  progress ParticipantProgress[]
+  codes    ParticipantCode[]
+}
+
+model Participant {
+  id        String   @id @default(cuid())
+  classId   String
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  class    Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  sessions Session[]
+  events   ParticipantEvent[]
+  progress ParticipantProgress[]
+  codes    ParticipantCode[]
 }
 
 enum BlockType {
@@ -68,6 +94,8 @@ model Module {
   updatedAt    DateTime      @updatedAt
   blocks       ModuleBlock[]
   courses      CourseModule[]
+  events       ParticipantEvent[]
+  progress     ParticipantProgress[]
 }
 
 model Block {
@@ -79,6 +107,74 @@ model Block {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   modules     ModuleBlock[]
+  events      ParticipantEvent[]
+  progress    ParticipantProgress[]
+  codes       ParticipantCode[]
+}
+
+model ParticipantEvent {
+  id        String   @id @default(cuid())
+  sessionId String
+  participantId String?
+  classId   String
+  moduleId  String?
+  blockId   String?
+  type      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant Participant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  module  Module? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  block   Block?  @relation(fields: [blockId], references: [id], onDelete: SetNull)
+
+  @@index([classId, createdAt])
+  @@index([sessionId, createdAt])
+}
+
+model ParticipantProgress {
+  id            String   @id @default(cuid())
+  sessionId     String
+  participantId String?
+  classId       String
+  moduleId      String?
+  blockId       String
+  firstViewedAt DateTime @default(now())
+  lastViewedAt  DateTime?
+  runCount      Int      @default(0)
+  lastRunAt     DateTime?
+  completedAt   DateTime?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant Participant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  module  Module? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  block   Block   @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, blockId])
+  @@index([classId])
+  @@index([sessionId])
+}
+
+model ParticipantCode {
+  id        String   @id @default(cuid())
+  sessionId String
+  participantId String?
+  classId   String
+  blockId   String
+  code      String
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant Participant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  block   Block   @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, blockId])
+  @@index([classId])
+  @@index([sessionId])
 }
 
 model ModuleBlock {

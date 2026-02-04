@@ -73,6 +73,9 @@ export async function GET() {
 
   return NextResponse.json({
     name: participant.name,
+    isPreview: participant.isPreview,
+    participantCode: participant.participantCode,
+    participantId: participant.participantId,
     class: {
       id: classItem.id,
       title: classItem.title,

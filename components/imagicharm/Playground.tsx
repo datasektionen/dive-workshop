@@ -5,7 +5,7 @@ import * as React from "react"
 import { Emulator } from "@/components/imagicharm/Emulator"
 import { Editor } from "@/components/imagicharm/Editor"
 import { Button } from "@/components/ui/button"
-import { ImagiCharmRuntime } from "@/lib/imagicharm/runtime"
+import { ImagiCharmRuntime, getPythonErrorMessage } from "@/lib/imagicharm/runtime"
 import type { Matrix } from "@/lib/imagicharm/types"
 
 const DEFAULT_CODE = `# Fill the display with a color so you can see output immediately
@@ -51,7 +51,7 @@ export function Playground() {
       await runtimeRef.current.run(code)
     } catch (err) {
       console.error("[imagi] run error", err)
-      setError("Unable to run Python code. Check syntax and try again.")
+      setError(getPythonErrorMessage(err, code))
     } finally {
       setIsRunning(false)
     }
