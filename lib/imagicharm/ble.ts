@@ -120,7 +120,8 @@ export class ImagiCharmBleClient {
   }
 
   async connect() {
-    if (!("bluetooth" in navigator)) {
+    const bluetooth = navigator.bluetooth
+    if (!bluetooth) {
       throw new Error("Web Bluetooth is not supported in this browser.")
     }
 
@@ -128,7 +129,7 @@ export class ImagiCharmBleClient {
       return this.device.name || "imagiCharm"
     }
 
-    const device = await navigator.bluetooth.requestDevice({
+    const device = await bluetooth.requestDevice({
       filters: [{ namePrefix: "imagiCharm", services: [SERVICE_UUID] }],
       optionalServices: [SERVICE_UUID],
     })
@@ -137,7 +138,11 @@ export class ImagiCharmBleClient {
     this.device = device
     this.device.addEventListener("gattserverdisconnected", this.handleDisconnect)
 
-    this.server = await device.gatt?.connect()
+    const gatt = device.gatt
+    if (!gatt) {
+      throw new Error("Unable to connect to imagiCharm.")
+    }
+    this.server = await gatt.connect()
     if (!this.server) {
       throw new Error("Unable to connect to imagiCharm.")
     }

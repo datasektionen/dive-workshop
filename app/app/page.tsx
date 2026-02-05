@@ -121,10 +121,11 @@ export default function AppPage() {
 
   React.useEffect(() => {
     if (!currentBlock?.id) return
+    const blockId = currentBlock.id
     let active = true
     async function loadCode() {
       try {
-        const response = await fetch(`/api/code?blockId=${currentBlock.id}`)
+        const response = await fetch(`/api/code?blockId=${blockId}`)
         if (!response.ok) return
         const payload = (await response.json()) as { code?: string }
         if (active) {

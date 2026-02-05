@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { OTPInput, OTPInputContext } from "input-otp"
+import { OTPInput, OTPInputContext, type SlotProps } from "input-otp"
 
 import { cn } from "@/lib/utils"
 
@@ -38,18 +38,15 @@ function InputOTPGroup({
   )
 }
 
-type SlotData = {
-  char: string | null
-  hasFakeCaret: boolean
-  isActive: boolean
-}
-
 function InputOTPSlot({
   index,
   slot,
   className,
   ...props
-}: React.ComponentProps<"div"> & { index?: number; slot?: SlotData }) {
+}: Omit<React.ComponentProps<"div">, "slot"> & {
+  index?: number
+  slot?: SlotProps
+}) {
   const inputOTPContext = React.useContext(OTPInputContext)
   const resolvedSlot =
     slot ?? (index !== undefined ? inputOTPContext?.slots?.[index] : undefined)

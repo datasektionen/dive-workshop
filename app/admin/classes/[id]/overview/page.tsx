@@ -183,11 +183,12 @@ export default function ClassOverviewPage({
 
   React.useEffect(() => {
     if (!selectedParticipant || !classId) return
+    const participantId = selectedParticipant.id
     let active = true
     async function loadStoredCode() {
       try {
         const response = await fetch(
-          `/api/admin/classes/${classId}/participants/${selectedParticipant.id}/code`
+          `/api/admin/classes/${classId}/participants/${participantId}/code`
         )
         if (!response.ok) return
         const payload = (await response.json()) as {

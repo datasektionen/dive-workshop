@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 
 import { getParticipantFromRequest } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
@@ -33,6 +34,10 @@ export async function POST(request: Request) {
     typeof body.moduleId === "string" && body.moduleId.trim()
       ? body.moduleId.trim()
       : null
+  const metadata =
+    body.metadata && typeof body.metadata === "object"
+      ? (body.metadata as Prisma.JsonObject)
+      : undefined
 
   const event = await prisma.participantEvent.create({
     data: {
@@ -42,8 +47,7 @@ export async function POST(request: Request) {
       classId: participant.classId,
       blockId,
       moduleId,
-      metadata:
-        body.metadata && typeof body.metadata === "object" ? body.metadata : null,
+      metadata,
     },
     select: { id: true },
   })

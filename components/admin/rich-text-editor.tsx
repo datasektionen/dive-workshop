@@ -54,7 +54,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
     if (!editor) return
     const nextValue = value || ""
     if (!editor.isFocused && editor.getHTML() !== nextValue) {
-      editor.commands.setContent(nextValue, false)
+      editor.commands.setContent(nextValue, { emitUpdate: false })
     }
   }, [editor, value])
 
