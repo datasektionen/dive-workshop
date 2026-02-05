@@ -10,6 +10,8 @@ npm install
 
 2. Start Postgres (Docker)
 
+create a .env file with `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dive`
+
 ```bash
 docker compose up -d
 ```

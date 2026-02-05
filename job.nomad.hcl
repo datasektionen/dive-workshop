@@ -1,5 +1,6 @@
 job "dive-workshop" {
   type = "service"
+  namespace = "dive"
 
   group "dive-workshop" {
     network {
