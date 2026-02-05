@@ -2,6 +2,7 @@
 set -e
 
 echo "Running migrations..."
+npx prisma generate
 npx prisma migrate deploy
 
 echo "Checking for existing data..."
