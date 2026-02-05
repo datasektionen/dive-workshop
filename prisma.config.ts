@@ -4,7 +4,7 @@ import { defineConfig, env } from "prisma/config"
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: env("DATABASE_URL"),
+    url: env("DATABASE_URL", "postgresql://user:pass@localhost:5432/dive?schema=public"),
   },
   migrations: {
     path: "prisma/migrations",
