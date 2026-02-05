@@ -1,46 +1,10 @@
 services:
-  db:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: dive
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - internal
-
   app:
-    container_name: dive_workshop
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3443:3000"
+      - "3000:3000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/dive
-      NODE_ENV: production
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - internal
-      - npm
-    # Use the image's entrypoint in production; no bind mounts.
-
-volumes:
-  postgres_data:
-
-networks:
-  internal:
-    driver: bridge
-  npm:
-    external: true
-    name: npm
