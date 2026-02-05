@@ -40,9 +40,10 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/server.mjs ./server.mjs
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/docker/entrypoint.sh ./docker/entrypoint.sh
 
 # Change ownership of the app directory
-RUN chown -R nextjs:nodejs /app
+RUN chown -R nextjs:nodejs /app && chmod +x /app/docker/entrypoint.sh
 
 USER nextjs
 
@@ -51,5 +52,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Start the server
-CMD ["node", "server.mjs"]
+# Start the server (migrate + seed if empty)
+CMD ["/app/docker/entrypoint.sh"]
