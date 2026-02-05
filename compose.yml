@@ -13,6 +13,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - internal
 
   app:
     container_name: dive_workshop
@@ -28,17 +30,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      # Mount for hot reload in development
-      - .:/app
-      - /app/node_modules
-      - /app/.next
-    command: sh -c "npx prisma migrate deploy && npx prisma db seed || true && node server.mjs"
+    networks:
+      - internal
+      - npm
+    # Use the image's entrypoint in production; no bind mounts.
 
 volumes:
   postgres_data:
 
 networks:
-  default:
+  internal:
+    driver: bridge
+  npm:
     external: true
     name: npm
