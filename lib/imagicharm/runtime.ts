@@ -94,6 +94,7 @@ function toJsValue(value: any) {
 }
 
 export class ImagiCharmRuntime {
+  private static activeRuntime: ImagiCharmRuntime | null = null
   private pyodide: any | null = null
   private timers: number[] = []
   private initialized = false
@@ -108,15 +109,18 @@ export class ImagiCharmRuntime {
   async init() {
     if (this.initialized) return
     this.pyodide = await loadPyodideRuntime()
+    ImagiCharmRuntime.activeRuntime = this
 
     if (!this.pyodide.__imagiBridge) {
       this.pyodide.registerJsModule("imagi_js", {
         render: (frames: ImagiFrame[] | any, loopCount: number) => {
-          console.log("[imagi] render called", { frames, loopCount })
+          const activeRuntime = ImagiCharmRuntime.activeRuntime
+          if (!activeRuntime) {
+            return
+          }
           const jsFrames = toJsValue(frames) as ImagiFrame[]
-          console.log("[imagi] render frames converted", jsFrames)
-          this.animationHandler?.(jsFrames, loopCount || 0)
-          this.playFrames(jsFrames, loopCount || 0)
+          activeRuntime.animationHandler?.(jsFrames, loopCount || 0)
+          activeRuntime.playFrames(jsFrames, loopCount || 0)
         },
       })
       this.pyodide.__imagiBridge = true
@@ -127,6 +131,9 @@ export class ImagiCharmRuntime {
 
   dispose() {
     this.clearTimers()
+    if (ImagiCharmRuntime.activeRuntime === this) {
+      ImagiCharmRuntime.activeRuntime = null
+    }
   }
 
   private clearTimers() {
@@ -137,10 +144,7 @@ export class ImagiCharmRuntime {
   private playFrames(frames: ImagiFrame[] = [], loopCount: number) {
     this.clearTimers()
 
-    console.log("[imagi] playFrames", { frames, loopCount })
-
     if (!frames || frames.length === 0) {
-      console.warn("[imagi] No frames to render.")
       return
     }
 
@@ -151,7 +155,6 @@ export class ImagiCharmRuntime {
         const snapshot = getFrameValue(frame, "snapshot")
         const durationValue = getFrameValue(frame, "duration")
         const frameMatrix = normalizeMatrix(snapshot)
-        console.log("[imagi] frame", frame, frameMatrix)
         const duration = Math.max(25, Number(durationValue) || 500)
         this.timers.push(
           window.setTimeout(() => {
@@ -174,6 +177,7 @@ export class ImagiCharmRuntime {
   }
 
   async run(code: string) {
+    ImagiCharmRuntime.activeRuntime = this
     await this.init()
     this.clearTimers()
 
