@@ -485,7 +485,10 @@ export default function AppPage() {
                 <div className="min-h-0 overflow-y-auto px-6 pt-4 pb-2">
                   <div className="mx-auto w-full">
                     {currentBlock.body.trim() ? (
-                      <MarkdownRenderer content={currentBlock.body} />
+                      <MarkdownRenderer
+                        content={currentBlock.body}
+                        imagiCaches={currentBlock.markdownImagiCaches}
+                      />
                     ) : (
                       <p className="text-sm text-muted-foreground">
                         This block has no text content.
@@ -520,7 +523,10 @@ export default function AppPage() {
               <div className="flex min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-2 mb-4">
                 {currentBlock.body.trim() ? (
                   <div className="mx-auto w-full">
-                    <MarkdownRenderer content={currentBlock.body} />
+                    <MarkdownRenderer
+                      content={currentBlock.body}
+                      imagiCaches={currentBlock.markdownImagiCaches}
+                    />
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">

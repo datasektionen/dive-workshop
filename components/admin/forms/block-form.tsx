@@ -8,6 +8,7 @@ import { MarkdownEditor } from "@/components/admin/markdown-editor"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { generateMarkdownImagiCaches } from "@/lib/markdown/imagi-cache-client"
 import {
   Select,
   SelectContent,
@@ -74,16 +75,17 @@ export function BlockForm({ blockId }: BlockFormProps) {
     setError("")
     setIsSaving(true)
 
-    const payload = {
-      type,
-      name,
-      title,
-      description,
-      body,
-      defaultCode: type === "code" ? defaultCode : "",
-    }
-
     try {
+      const markdownImagiCaches = await generateMarkdownImagiCaches(body)
+      const payload = {
+        type,
+        name,
+        title,
+        description,
+        body,
+        defaultCode: type === "code" ? defaultCode : "",
+        markdownImagiCaches,
+      }
       const response = await fetch(blockId ? `/api/blocks/${blockId}` : "/api/blocks", {
         method: blockId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },

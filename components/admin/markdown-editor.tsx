@@ -7,6 +7,14 @@ import CodeMirror from "@uiw/react-codemirror"
 
 import { MarkdownRenderer } from "@/components/markdown/markdown-renderer"
 import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import { useCodeMirrorTheme } from "@/lib/imagicharm/editor-theme"
 
 type MarkdownEditorProps = {
@@ -17,6 +25,7 @@ type MarkdownEditorProps = {
 export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   const [mode, setMode] = React.useState<"edit" | "preview">("edit")
   const codeMirrorTheme = useCodeMirrorTheme()
+  const hasContent = value.trim().length > 0
 
   return (
     <div className="overflow-hidden rounded-md border bg-background">
@@ -39,9 +48,96 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
             Preview
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Supports Markdown, GFM, and fenced code blocks.
-        </p>
+        <div className="flex items-center gap-2">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button type="button" size="sm" variant="outline">
+                Help
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[min(92vw,760px)] sm:max-w-none">
+              <SheetHeader>
+                <SheetTitle>Markdown Help</SheetTitle>
+                <SheetDescription>
+                  Supported syntax for Imagi snippets and columns layout.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+                <div className="space-y-5 text-sm">
+                  <div className="space-y-2">
+                    <p className="font-medium">Static Imagi grid</p>
+                    <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-xs">
+{`\
+\`\`\`python imagi-grid
+# draw one frame
+render()
+\`\`\`
+`}
+                    </pre>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-medium">Animated Imagi preview</p>
+                    <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-xs">
+{`\
+\`\`\`python imagi-anim
+# draw multiple frames
+render()
+\`\`\`
+`}
+                    </pre>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-medium">Columns directive</p>
+                    <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-xs">
+{`\
+:::columns align=middle gap=6
+:::col
+Left content
+:::
+:::col align=top
+Right content
+:::
+:::
+`}
+                    </pre>
+                    <p className="text-xs text-muted-foreground">
+                      `align` can be `top`, `middle`, or `bottom` on both
+                      `columns` and each `col`.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button type="button" size="sm" variant="outline" disabled={!hasContent}>
+                Fullscreen preview
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="w-[96vw] sm:max-w-none"
+            >
+              <SheetHeader className="border-b pb-3">
+                <SheetTitle>Markdown Preview</SheetTitle>
+                <SheetDescription>
+                  Near-fullscreen preview of the rendered markdown.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+                {hasContent ? (
+                  <MarkdownRenderer content={value} />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Nothing to preview yet.
+                  </p>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
 
       {mode === "edit" ? (

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import dynamic from "next/dynamic"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -14,8 +15,22 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
-import Dither from "@/components/Dither"
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp"
+
+const Dither = dynamic(() => import("@/components/Dither"), {
+  ssr: false,
+})
+
+const BACKGROUND_DISABLE_UNTIL_KEY = "dive_login_bg_disabled_until"
+const BACKGROUND_DISABLE_DURATION_MS = 7 * 24 * 60 * 60 * 1000
+
+type NavigatorWithPerformanceHints = Navigator & {
+  connection?: {
+    saveData?: boolean
+    effectiveType?: string
+  }
+  deviceMemory?: number
+}
 
 export default function Page() {
   const router = useRouter()
@@ -23,8 +38,184 @@ export default function Page() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isBackgroundReady, setIsBackgroundReady] = React.useState(false)
   const [hideFallback, setHideFallback] = React.useState(false)
+  const [shouldRenderAnimatedBackground, setShouldRenderAnimatedBackground] =
+    React.useState(false)
   const [mode, setMode] = React.useState<"new" | "code">("new")
   const [participantCode, setParticipantCode] = React.useState("")
+
+  const disableAnimatedBackground = React.useCallback((persist: boolean) => {
+    setShouldRenderAnimatedBackground(false)
+    setIsBackgroundReady(false)
+    setHideFallback(false)
+
+    if (!persist || typeof window === "undefined") return
+
+    try {
+      const disabledUntil = Date.now() + BACKGROUND_DISABLE_DURATION_MS
+      window.localStorage.setItem(
+        BACKGROUND_DISABLE_UNTIL_KEY,
+        String(disabledUntil)
+      )
+    } catch {
+      // Ignore localStorage write errors.
+    }
+  }, [])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    async function measureFrameBudget(sampleCount: number) {
+      return new Promise<number>((resolve) => {
+        let count = 0
+        let totalDelta = 0
+        let previous = performance.now()
+
+        function sample(now: number) {
+          totalDelta += now - previous
+          previous = now
+          count += 1
+
+          if (count >= sampleCount) {
+            resolve(totalDelta / count)
+            return
+          }
+
+          window.requestAnimationFrame(sample)
+        }
+
+        window.requestAnimationFrame(sample)
+      })
+    }
+
+    async function evaluateBackgroundSupport() {
+      if (typeof window === "undefined") return
+
+      try {
+        const disabledUntil = Number(
+          window.localStorage.getItem(BACKGROUND_DISABLE_UNTIL_KEY) || "0"
+        )
+        if (Number.isFinite(disabledUntil) && disabledUntil > Date.now()) {
+          disableAnimatedBackground(false)
+          return
+        }
+      } catch {
+        // Ignore localStorage read errors.
+      }
+
+      const media = window.matchMedia?.("(prefers-reduced-motion: reduce)")
+      if (media?.matches) {
+        disableAnimatedBackground(false)
+        return
+      }
+
+      const navigatorHints = navigator as NavigatorWithPerformanceHints
+      if (
+        navigatorHints.connection?.saveData ||
+        navigatorHints.connection?.effectiveType === "2g" ||
+        navigatorHints.connection?.effectiveType === "slow-2g"
+      ) {
+        disableAnimatedBackground(false)
+        return
+      }
+
+      if (
+        typeof navigatorHints.hardwareConcurrency === "number" &&
+        navigatorHints.hardwareConcurrency > 0 &&
+        navigatorHints.hardwareConcurrency <= 4
+      ) {
+        disableAnimatedBackground(false)
+        return
+      }
+
+      if (
+        typeof navigatorHints.deviceMemory === "number" &&
+        navigatorHints.deviceMemory > 0 &&
+        navigatorHints.deviceMemory <= 4
+      ) {
+        disableAnimatedBackground(false)
+        return
+      }
+
+      const avgFrameDuration = await measureFrameBudget(12)
+      if (cancelled) return
+
+      if (avgFrameDuration > 28) {
+        disableAnimatedBackground(false)
+        return
+      }
+
+      await new Promise<void>((resolve) => {
+        if (typeof window.requestIdleCallback === "function") {
+          window.requestIdleCallback(() => resolve(), { timeout: 900 })
+          return
+        }
+        window.setTimeout(resolve, 120)
+      })
+      if (cancelled) return
+
+      setShouldRenderAnimatedBackground(true)
+    }
+
+    void evaluateBackgroundSupport()
+
+    return () => {
+      cancelled = true
+    }
+  }, [disableAnimatedBackground])
+
+  React.useEffect(() => {
+    if (!shouldRenderAnimatedBackground || isBackgroundReady) return
+
+    const timeout = window.setTimeout(() => {
+      // If shader setup takes too long, keep static background and remember choice.
+      disableAnimatedBackground(true)
+    }, 3200)
+
+    return () => window.clearTimeout(timeout)
+  }, [disableAnimatedBackground, isBackgroundReady, shouldRenderAnimatedBackground])
+
+  React.useEffect(() => {
+    if (!shouldRenderAnimatedBackground) return
+
+    let frameHandle = 0
+    let sampleCount = 0
+    let slowFrameCount = 0
+    let previous = performance.now()
+    let active = true
+
+    function sample(now: number) {
+      if (!active) return
+      if (document.visibilityState === "hidden") {
+        previous = now
+        frameHandle = window.requestAnimationFrame(sample)
+        return
+      }
+
+      const delta = now - previous
+      previous = now
+      sampleCount += 1
+
+      if (sampleCount > 8 && delta > 40) {
+        slowFrameCount += 1
+      }
+
+      if (sampleCount >= 90) {
+        if (slowFrameCount >= 18) {
+          disableAnimatedBackground(true)
+        }
+        return
+      }
+
+      frameHandle = window.requestAnimationFrame(sample)
+    }
+
+    frameHandle = window.requestAnimationFrame(sample)
+
+    return () => {
+      active = false
+      window.cancelAnimationFrame(frameHandle)
+    }
+  }, [disableAnimatedBackground, shouldRenderAnimatedBackground])
 
   React.useEffect(() => {
     if (mode === "new") {
@@ -33,7 +224,7 @@ export default function Page() {
   }, [mode])
 
   React.useEffect(() => {
-    if (!isBackgroundReady) {
+    if (!shouldRenderAnimatedBackground || !isBackgroundReady) {
       return
     }
 
@@ -42,7 +233,7 @@ export default function Page() {
     }, 180)
 
     return () => window.clearTimeout(timer)
-  }, [isBackgroundReady])
+  }, [isBackgroundReady, shouldRenderAnimatedBackground])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -110,32 +301,35 @@ export default function Page() {
               inset: 0,
               backgroundImage:
                 "radial-gradient(circle at 48% 24%, #6f2391 0%, #2f0a4f 33%, #0a0a0f 72%, #050507 100%)",
-              opacity: hideFallback ? 0 : 1,
+              opacity:
+                shouldRenderAnimatedBackground && hideFallback ? 0 : 1,
               transition: "opacity 900ms ease-out",
             }}
           />
-          <div
-            className="absolute inset-0"
-            style={{
-              position: "absolute",
-              inset: 0,
-              opacity: hideFallback ? 1 : 0,
-              transition: "opacity 900ms ease-out",
-            }}
-          >
-            <Dither
-              waveColor={[0.43, 0.18, 0.53]}
-              disableAnimation={false}
-              enableMouseInteraction={false}
-              mouseRadius={1}
-              colorNum={6}
-              pixelSize={3}
-              waveAmplitude={0.3}
-              waveFrequency={3}
-              waveSpeed={0.03}
-              onReady={() => setIsBackgroundReady(true)}
-            />
-          </div>
+          {shouldRenderAnimatedBackground ? (
+            <div
+              className="absolute inset-0"
+              style={{
+                position: "absolute",
+                inset: 0,
+                opacity: hideFallback ? 1 : 0,
+                transition: "opacity 900ms ease-out",
+              }}
+            >
+              <Dither
+                waveColor={[0.43, 0.18, 0.53]}
+                disableAnimation={false}
+                enableMouseInteraction={false}
+                mouseRadius={1}
+                colorNum={6}
+                pixelSize={3}
+                waveAmplitude={0.3}
+                waveFrequency={3}
+                waveSpeed={0.03}
+                onReady={() => setIsBackgroundReady(true)}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="pointer-events-none absolute inset-0 dark:bg-[radial-gradient(circle_at_50%_35%,rgba(15,23,42,0)_0%,rgba(2,6,23,0.5)_55%,rgba(2,6,23,0.88)_100%)]" />

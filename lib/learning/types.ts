@@ -1,3 +1,19 @@
+import type {
+  ImagiSnippetMode,
+  MarkdownImagiFrame,
+} from "@/lib/markdown/imagi-types"
+
+export type LearningBlockMarkdownImagiCache = {
+  snippetKey: string
+  language: string
+  mode: ImagiSnippetMode
+  code: string
+  codeHash: string
+  frames: MarkdownImagiFrame[]
+  loopCount: number
+  error: string | null
+}
+
 export type LearningBlock = {
   id: string
   type: "text" | "code"
@@ -5,6 +21,7 @@ export type LearningBlock = {
   description: string
   body: string
   defaultCode: string
+  markdownImagiCaches: LearningBlockMarkdownImagiCache[]
 }
 
 export type LearningModule = {
