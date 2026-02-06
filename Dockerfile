@@ -41,13 +41,16 @@ COPY --from=builder /app/server.mjs ./server.mjs
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/docker/entrypoint.sh ./docker/entrypoint.sh
+COPY --from=builder /app/docker/entrypoint2.sh ./docker/entrypoint2.sh
 
 # Change ownership of the app directory
-RUN chown -R nextjs:nodejs /app && chmod +x /app/docker/entrypoint.sh
+RUN apk add --no-cache postgresql-client \
+  && chown -R nextjs:nodejs /app \
+  && chmod +x /app/docker/entrypoint.sh /app/docker/entrypoint2.sh
 
 USER nextjs
 
 ENV NODE_ENV=production
 
 # Start the server (migrate + seed if empty)
-CMD ["/app/docker/entrypoint.sh"]
+CMD ["/app/docker/entrypoint2.sh"]
