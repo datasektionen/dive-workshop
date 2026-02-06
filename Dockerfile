@@ -53,4 +53,4 @@ USER nextjs
 ENV NODE_ENV=production
 
 # Start the server (migrate + seed if empty)
-CMD ["/app/docker/entrypoint2.sh"]
+CMD ["/app/docker/entrypoint.sh"]

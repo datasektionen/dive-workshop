@@ -1162,4 +1162,4 @@ sys.modules["open_imagilib.emulator"] = emulator_mod
 imagilib_mod = types.ModuleType("imagilib")
 imagilib_mod.__dict__.update(emulator_mod.__dict__)
 sys.modules["imagilib"] = imagilib_mod
-`
+`;

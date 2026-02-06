@@ -1,8 +1,8 @@
 export type SignatureInfo = {
-  label: string
-  params: string[]
-  docs: string
-}
+  label: string;
+  params: string[];
+  docs: string;
+};
 
 export const SIGNATURES: Record<string, SignatureInfo> = {
   print: {
@@ -13,7 +13,7 @@ export const SIGNATURES: Record<string, SignatureInfo> = {
   range: {
     label: "range(start, stop[, step])",
     params: ["start", "stop", "step"],
-    docs: "Create an arithmetic progression of integers.",
+    docs: "Create a progression of integers.",
   },
   len: {
     label: "len(obj)",
@@ -38,7 +38,7 @@ export const SIGNATURES: Record<string, SignatureInfo> = {
   list: {
     label: "list(iterable=())",
     params: ["iterable"],
-    docs: "Create a list from an iterable.",
+    docs: "Create a list.",
   },
   dict: {
     label: "dict(**kwargs)",
@@ -48,12 +48,7 @@ export const SIGNATURES: Record<string, SignatureInfo> = {
   tuple: {
     label: "tuple(iterable=())",
     params: ["iterable"],
-    docs: "Create a tuple from an iterable.",
-  },
-  set: {
-    label: "set(iterable=())",
-    params: ["iterable"],
-    docs: "Create a set from an iterable.",
+    docs: "Create a tuple.",
   },
   clear: {
     label: "clear()",
@@ -66,17 +61,19 @@ export const SIGNATURES: Record<string, SignatureInfo> = {
     docs: "Fill the matrix with a color tuple.",
   },
   character: {
-    label: "character(char, char_color=on, back_color=0)",
+    label: "character(char, char_color=on, back_color=off)",
     params: ["char", "char_color", "back_color"],
     docs: "Draw a character on the matrix.",
   },
   scrolling_text: {
-    label: "scrolling_text(text, text_color=on, back_color=off, duration=80, loop_count=0)",
+    label:
+      "scrolling_text(text, text_color=on, back_color=off, duration=80, loop_count=0)",
     params: ["text", "text_color", "back_color", "duration", "loop_count"],
     docs: "Scroll text across the matrix.",
   },
   render: {
-    label: "render(animation=None, blink_rate=0, outdoor_mode=True, path=None, scale=8)",
+    label:
+      "render(animation=None, blink_rate=0, outdoor_mode=True, path=None, scale=8)",
     params: ["animation", "blink_rate", "outdoor_mode", "path", "scale"],
     docs: "Render the current matrix or animation.",
   },
@@ -85,4 +82,4 @@ export const SIGNATURES: Record<string, SignatureInfo> = {
     params: ["loop_count"],
     docs: "Animation container for frames.",
   },
-}
+};

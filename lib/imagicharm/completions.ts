@@ -1,11 +1,11 @@
-import { SIGNATURES } from "@/lib/imagicharm/signatures"
+import { SIGNATURES } from "@/lib/imagicharm/signatures";
 
 export type CompletionItem = {
-  label: string
-  type: string
-  detail?: string
-  info?: string
-}
+  label: string;
+  type: string;
+  detail?: string;
+  info?: string;
+};
 
 export const COMPLETIONS: CompletionItem[] = [
   // Python keywords
@@ -19,16 +19,7 @@ export const COMPLETIONS: CompletionItem[] = [
   { label: "return", type: "keyword" },
   { label: "break", type: "keyword" },
   { label: "continue", type: "keyword" },
-  { label: "pass", type: "keyword" },
   { label: "import", type: "keyword" },
-  { label: "from", type: "keyword" },
-  { label: "as", type: "keyword" },
-  { label: "class", type: "keyword" },
-  { label: "try", type: "keyword" },
-  { label: "except", type: "keyword" },
-  { label: "finally", type: "keyword" },
-  { label: "with", type: "keyword" },
-  { label: "lambda", type: "keyword" },
   { label: "True", type: "keyword" },
   { label: "False", type: "keyword" },
   { label: "None", type: "keyword" },
@@ -37,62 +28,47 @@ export const COMPLETIONS: CompletionItem[] = [
   {
     label: "range",
     type: "function",
-    detail: SIGNATURES.range?.label,
     info: SIGNATURES.range?.docs,
   },
   {
     label: "len",
     type: "function",
-    detail: SIGNATURES.len?.label,
     info: SIGNATURES.len?.docs,
   },
   {
     label: "print",
     type: "function",
-    detail: SIGNATURES.print?.label,
     info: SIGNATURES.print?.docs,
   },
   {
     label: "str",
     type: "function",
-    detail: SIGNATURES.str?.label,
     info: SIGNATURES.str?.docs,
   },
   {
     label: "int",
     type: "function",
-    detail: SIGNATURES.int?.label,
     info: SIGNATURES.int?.docs,
   },
   {
     label: "float",
     type: "function",
-    detail: SIGNATURES.float?.label,
     info: SIGNATURES.float?.docs,
   },
   {
     label: "list",
     type: "function",
-    detail: SIGNATURES.list?.label,
     info: SIGNATURES.list?.docs,
   },
   {
     label: "dict",
     type: "function",
-    detail: SIGNATURES.dict?.label,
     info: SIGNATURES.dict?.docs,
   },
   {
     label: "tuple",
     type: "function",
-    detail: SIGNATURES.tuple?.label,
     info: SIGNATURES.tuple?.docs,
-  },
-  {
-    label: "set",
-    type: "function",
-    detail: SIGNATURES.set?.label,
-    info: SIGNATURES.set?.docs,
   },
 
   // imagiCharm API (details pulled from signatures where applicable)
@@ -104,37 +80,31 @@ export const COMPLETIONS: CompletionItem[] = [
   {
     label: "Animation",
     type: "class",
-    detail: SIGNATURES.Animation?.label,
     info: SIGNATURES.Animation?.docs,
   },
   {
     label: "clear",
     type: "function",
-    detail: SIGNATURES.clear?.label,
     info: SIGNATURES.clear?.docs,
   },
   {
     label: "background",
     type: "function",
-    detail: SIGNATURES.background?.label,
     info: SIGNATURES.background?.docs,
   },
   {
     label: "character",
     type: "function",
-    detail: SIGNATURES.character?.label,
     info: SIGNATURES.character?.docs,
   },
   {
     label: "scrolling_text",
     type: "function",
-    detail: SIGNATURES.scrolling_text?.label,
     info: SIGNATURES.scrolling_text?.docs,
   },
   {
     label: "render",
     type: "function",
-    detail: SIGNATURES.render?.label,
     info: SIGNATURES.render?.docs,
   },
   {
@@ -149,16 +119,16 @@ export const COMPLETIONS: CompletionItem[] = [
   },
 
   // Color constants
-  { label: "R", type: "constant" },
-  { label: "G", type: "constant" },
-  { label: "B", type: "constant" },
-  { label: "A", type: "constant" },
-  { label: "Y", type: "constant" },
-  { label: "O", type: "constant" },
-  { label: "M", type: "constant" },
-  { label: "P", type: "constant" },
-  { label: "W", type: "constant" },
-  { label: "K", type: "constant" },
-  { label: "on", type: "constant" },
-  { label: "off", type: "constant" },
-]
+  { label: "R", type: "constant", info: "Red color" },
+  { label: "G", type: "constant", info: "Green color" },
+  { label: "B", type: "constant", info: "Blue color" },
+  { label: "A", type: "constant", info: "Aqua color" },
+  { label: "Y", type: "constant", info: "Yellow color" },
+  { label: "O", type: "constant", info: "Orange color" },
+  { label: "M", type: "constant", info: "Magenta color" },
+  { label: "P", type: "constant", info: "Purple color" },
+  { label: "W", type: "constant", info: "White color" },
+  { label: "K", type: "constant", info: "Black color" },
+  { label: "on", type: "constant", info: "White color" },
+  { label: "off", type: "constant", info: "Black color" },
+];
