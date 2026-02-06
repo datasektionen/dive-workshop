@@ -136,6 +136,9 @@ export default function AppPage() {
   React.useEffect(() => {
     if (!currentBlock?.id) return
     const blockId = currentBlock.id
+    const fallbackDefaultCode = currentBlock.defaultCode.trim()
+      ? currentBlock.defaultCode
+      : undefined
     let active = true
 
     if (Object.prototype.hasOwnProperty.call(codeByBlockId, blockId)) {
@@ -154,9 +157,6 @@ export default function AppPage() {
             if (Object.prototype.hasOwnProperty.call(prev, blockId)) {
               return prev
             }
-            const fallbackDefaultCode = currentBlock.defaultCode.trim()
-              ? currentBlock.defaultCode
-              : undefined
             if (typeof payload.code === "string") {
               return { ...prev, [blockId]: payload.code }
             }
