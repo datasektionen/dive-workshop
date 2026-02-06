@@ -66,16 +66,36 @@ fi
 echo "Backup complete."
 
 if [ "${ENTRYPOINT2_DRY_RUN:-0}" = "1" ]; then
-  echo "ENTRYPOINT2_DRY_RUN=1 set. Skipping reset/migrate/seed/start."
+  echo "ENTRYPOINT2_DRY_RUN=1 set. Skipping schema reset."
   exit 0
 fi
 
-echo "Resetting DB and reapplying migrations..."
-if ! run_with_retries "Prisma migrate reset" 3 3 npx prisma migrate reset --force; then
-  echo "Prisma migrate reset failed. Current migration status:"
-  npx prisma migrate status || true
+echo "Dropping and recreating schema public (hard reset, includes Prisma metadata tables)..."
+if ! run_with_retries "Postgres schema reset" 3 3 node -e '
+  const { Client } = require("pg")
+
+  async function main() {
+    const client = new Client({
+      connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/dive",
+    })
+
+    await client.connect()
+    try {
+      await client.query("DROP SCHEMA IF EXISTS public CASCADE;")
+      await client.query("CREATE SCHEMA public;")
+      await client.query("GRANT ALL ON SCHEMA public TO public;")
+    } finally {
+      await client.end()
+    }
+  }
+
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+'; then
+  echo "Schema reset failed."
   exit 1
 fi
 
-echo "Reset flow complete. Starting server..."
-exec node server.mjs
+echo "Reset flow complete. You can now run docker/entrypoint.sh."
