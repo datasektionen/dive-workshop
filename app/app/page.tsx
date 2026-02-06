@@ -28,6 +28,18 @@ export default function AppPage() {
   const [codeByBlockId, setCodeByBlockId] = React.useState<
     Record<string, string>
   >({})
+  const codeByBlockIdRef = React.useRef<Record<string, string>>({})
+  const loadedCodeBlockIdsRef = React.useRef<Set<string>>(new Set())
+  const loadingCodeBlockIdsRef = React.useRef<Set<string>>(new Set())
+  const saveTimeoutByBlockIdRef = React.useRef<Record<string, number>>({})
+  const saveStateByBlockIdRef = React.useRef<
+    Record<string, { inFlight: boolean; queuedCode: string | null }>
+  >({})
+  const previousSelectedBlockIdRef = React.useRef<string | null>(null)
+
+  React.useEffect(() => {
+    codeByBlockIdRef.current = codeByBlockId
+  }, [codeByBlockId])
   const sendEvent = React.useCallback(
     async (payload: { type: string; blockId?: string; moduleId?: string; metadata?: Record<string, unknown> }) => {
       try {
@@ -41,6 +53,81 @@ export default function AppPage() {
       }
     },
     []
+  )
+
+  const persistCode = React.useCallback(async (blockId: string, code: string) => {
+    try {
+      await fetch("/api/code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blockId, code }),
+        keepalive: true,
+      })
+    } catch {
+      // Ignore save errors; autosave will retry on next change/flush.
+    }
+  }, [])
+
+  const flushCodeSave = React.useCallback(
+    (blockId: string) => {
+      const nextCode = codeByBlockIdRef.current[blockId]
+      if (typeof nextCode !== "string") return
+
+      const currentState = saveStateByBlockIdRef.current[blockId]
+      if (currentState?.inFlight) {
+        saveStateByBlockIdRef.current[blockId] = {
+          ...currentState,
+          queuedCode: nextCode,
+        }
+        return
+      }
+
+      saveStateByBlockIdRef.current[blockId] = {
+        inFlight: true,
+        queuedCode: null,
+      }
+
+      void (async () => {
+        await persistCode(blockId, nextCode)
+        const queuedCode = saveStateByBlockIdRef.current[blockId]?.queuedCode
+        saveStateByBlockIdRef.current[blockId] = {
+          inFlight: false,
+          queuedCode: null,
+        }
+
+        if (typeof queuedCode === "string" && queuedCode !== nextCode) {
+          flushCodeSave(blockId)
+        }
+      })()
+    },
+    [persistCode]
+  )
+
+  const flushScheduledCodeSave = React.useCallback(
+    (blockId: string) => {
+      const timeoutId = saveTimeoutByBlockIdRef.current[blockId]
+      if (typeof timeoutId === "number") {
+        window.clearTimeout(timeoutId)
+        delete saveTimeoutByBlockIdRef.current[blockId]
+      }
+      flushCodeSave(blockId)
+    },
+    [flushCodeSave]
+  )
+
+  const scheduleCodeSave = React.useCallback(
+    (blockId: string) => {
+      const existingTimeout = saveTimeoutByBlockIdRef.current[blockId]
+      if (typeof existingTimeout === "number") {
+        window.clearTimeout(existingTimeout)
+      }
+
+      saveTimeoutByBlockIdRef.current[blockId] = window.setTimeout(() => {
+        delete saveTimeoutByBlockIdRef.current[blockId]
+        flushCodeSave(blockId)
+      }, 700)
+    },
+    [flushCodeSave]
   )
 
   React.useEffect(() => {
@@ -93,6 +180,12 @@ export default function AppPage() {
     () => buildBlockSlugMaps(allBlocks),
     [allBlocks]
   )
+  const currentCode = React.useMemo(() => {
+    if (!currentBlock || currentBlock.type !== "code") return ""
+    const cachedCode = codeByBlockId[currentBlock.id]
+    if (typeof cachedCode === "string") return cachedCode
+    return currentBlock.defaultCode.trim() ? currentBlock.defaultCode : ""
+  }, [currentBlock, codeByBlockId])
 
   React.useEffect(() => {
     if (!data || selectedBlockId) return
@@ -134,47 +227,95 @@ export default function AppPage() {
   }, [currentBlock?.id, currentBlock?.moduleId, sendEvent])
 
   React.useEffect(() => {
-    if (!currentBlock?.id) return
+    const previousBlockId = previousSelectedBlockIdRef.current
+    if (previousBlockId && previousBlockId !== selectedBlockId) {
+      flushScheduledCodeSave(previousBlockId)
+    }
+    previousSelectedBlockIdRef.current = selectedBlockId
+  }, [selectedBlockId, flushScheduledCodeSave])
+
+  React.useEffect(() => {
+    if (!currentBlock?.id || currentBlock.type !== "code") return
     const blockId = currentBlock.id
+    if (loadedCodeBlockIdsRef.current.has(blockId)) return
+    if (loadingCodeBlockIdsRef.current.has(blockId)) return
+
+    if (Object.prototype.hasOwnProperty.call(codeByBlockIdRef.current, blockId)) {
+      loadedCodeBlockIdsRef.current.add(blockId)
+      return
+    }
+
     const fallbackDefaultCode = currentBlock.defaultCode.trim()
       ? currentBlock.defaultCode
-      : undefined
+      : ""
     let active = true
-
-    if (Object.prototype.hasOwnProperty.call(codeByBlockId, blockId)) {
-      return () => {
-        active = false
-      }
-    }
+    loadingCodeBlockIdsRef.current.add(blockId)
 
     async function loadCode() {
       try {
         const response = await fetch(`/api/code?blockId=${blockId}`)
-        if (!response.ok) return
-        const payload = (await response.json()) as { code?: string | null }
+        const payload = response.ok
+          ? ((await response.json()) as { code?: string | null })
+          : null
+        const loadedCode =
+          typeof payload?.code === "string" && payload.code.trim().length > 0
+            ? payload.code
+            : null
+        const resolvedCode = loadedCode ?? fallbackDefaultCode
+
         if (active) {
           setCodeByBlockId((prev) => {
             if (Object.prototype.hasOwnProperty.call(prev, blockId)) {
               return prev
             }
-            if (typeof payload.code === "string") {
-              return { ...prev, [blockId]: payload.code }
-            }
-            if (fallbackDefaultCode) {
-              return { ...prev, [blockId]: fallbackDefaultCode }
-            }
-            return prev
+            return { ...prev, [blockId]: resolvedCode }
           })
         }
       } catch {
-        // Ignore code loading errors and rely on local default.
+        if (active) {
+          setCodeByBlockId((prev) => {
+            if (Object.prototype.hasOwnProperty.call(prev, blockId)) {
+              return prev
+            }
+            return { ...prev, [blockId]: fallbackDefaultCode }
+          })
+        }
+      } finally {
+        loadingCodeBlockIdsRef.current.delete(blockId)
+        loadedCodeBlockIdsRef.current.add(blockId)
       }
     }
     loadCode()
     return () => {
       active = false
     }
-  }, [currentBlock?.id, currentBlock?.defaultCode, codeByBlockId])
+  }, [currentBlock?.id, currentBlock?.type, currentBlock?.defaultCode])
+
+  React.useEffect(() => {
+    const saveTimeoutByBlockId = saveTimeoutByBlockIdRef.current
+
+    return () => {
+      for (const timeoutId of Object.values(saveTimeoutByBlockId)) {
+        window.clearTimeout(timeoutId)
+      }
+      for (const blockId of Object.keys(codeByBlockIdRef.current)) {
+        flushCodeSave(blockId)
+      }
+    }
+  }, [flushCodeSave])
+
+  const handleCurrentBlockCodeChange = React.useCallback(
+    (nextCode: string) => {
+      if (!currentBlock || currentBlock.type !== "code") return
+      const blockId = currentBlock.id
+      setCodeByBlockId((prev) => {
+        if (prev[blockId] === nextCode) return prev
+        return { ...prev, [blockId]: nextCode }
+      })
+      scheduleCodeSave(blockId)
+    },
+    [currentBlock, scheduleCodeSave]
+  )
 
   function handleSplitPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!splitRef.current) return
@@ -362,27 +503,16 @@ export default function AppPage() {
                 </div>
                 <div className="min-h-0 overflow-hidden">
                   <LearningCodeTask
-                    key={currentBlock.id}
                     className="h-full"
                     blockId={currentBlock.id}
                     moduleId={currentBlock.moduleId}
-                    initialCode={
-                      codeByBlockId[currentBlock.id] ??
-                      (currentBlock.defaultCode.trim()
-                        ? currentBlock.defaultCode
-                        : undefined)
-                    }
+                    code={currentCode}
                     defaultCode={
                       currentBlock.defaultCode.trim()
                         ? currentBlock.defaultCode
                         : undefined
                     }
-                    onCodeChange={(nextCode) => {
-                      setCodeByBlockId((prev) => {
-                        if (prev[currentBlock.id] === nextCode) return prev
-                        return { ...prev, [currentBlock.id]: nextCode }
-                      })
-                    }}
+                    onCodeChange={handleCurrentBlockCodeChange}
                   />
                 </div>
               </div>

@@ -36,16 +36,16 @@ type LearningCodeTaskProps = {
   className?: string
   blockId?: string
   moduleId?: string
-  initialCode?: string
+  code: string
   defaultCode?: string
-  onCodeChange?: (nextCode: string) => void
+  onCodeChange: (nextCode: string) => void
 }
 
 export function LearningCodeTask({
   className,
   blockId,
   moduleId,
-  initialCode,
+  code,
   defaultCode,
   onCodeChange,
 }: LearningCodeTaskProps) {
@@ -53,7 +53,6 @@ export function LearningCodeTask({
     typeof defaultCode === "string" && defaultCode.trim()
       ? defaultCode
       : DEFAULT_CODE
-  const [code, setCode] = React.useState(initialCode ?? resolvedDefaultCode)
   const [matrix, setMatrix] = React.useState<Matrix>(EMPTY_MATRIX)
   const [error, setError] = React.useState("")
   const [bleError, setBleError] = React.useState("")
@@ -69,62 +68,19 @@ export function LearningCodeTask({
   const wsClosedRef = React.useRef(false)
   const latestCodeRef = React.useRef(code)
   const latestBlockRef = React.useRef(blockId)
-  const previousBlockIdRef = React.useRef<string | undefined>(blockId)
   latestBlockRef.current = blockId
 
   const handleCodeChange = React.useCallback(
     (nextCode: string) => {
       latestCodeRef.current = nextCode
-      setCode(nextCode)
-      onCodeChange?.(nextCode)
+      onCodeChange(nextCode)
     },
     [onCodeChange]
   )
 
-  const persistCode = React.useCallback(
-    async (targetBlockId: string, targetCode: string, keepalive = false) => {
-      try {
-        await fetch("/api/code", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            blockId: targetBlockId,
-            code: targetCode,
-          }),
-          keepalive,
-        })
-      } catch {
-        // Ignore autosave errors.
-      }
-    },
-    []
-  )
-
   React.useEffect(() => {
-    const previousBlockId = previousBlockIdRef.current
-    if (previousBlockId && previousBlockId !== blockId) {
-      // Flush save for the previous block before switching context.
-      void persistCode(previousBlockId, latestCodeRef.current)
-    }
-    previousBlockIdRef.current = blockId
-  }, [blockId, persistCode])
-
-  React.useEffect(() => {
-    return () => {
-      const currentBlockId = previousBlockIdRef.current
-      if (currentBlockId) {
-        // Best-effort save when leaving the page/component.
-        void persistCode(currentBlockId, latestCodeRef.current, true)
-      }
-    }
-  }, [persistCode])
-
-  React.useEffect(() => {
-    if (!blockId) return
-    const nextCode = initialCode ?? resolvedDefaultCode
-    latestCodeRef.current = nextCode
-    setCode((prevCode) => (prevCode === nextCode ? prevCode : nextCode))
-  }, [initialCode, blockId, resolvedDefaultCode])
+    latestCodeRef.current = code
+  }, [code])
 
   React.useEffect(() => {
     bleRef.current = new ImagiCharmBleClient({
@@ -241,14 +197,6 @@ export function LearningCodeTask({
 
     return () => window.clearTimeout(handle)
   }, [code, blockId])
-
-  React.useEffect(() => {
-    if (!blockId) return
-    const handle = window.setTimeout(() => {
-      void persistCode(blockId, latestCodeRef.current)
-    }, 600)
-    return () => window.clearTimeout(handle)
-  }, [code, blockId, persistCode])
 
   async function handleConnect() {
     setBleError("")
@@ -367,11 +315,13 @@ export function LearningCodeTask({
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleCodeChange(resolvedDefaultCode)}>
-                  Reset
-                </AlertDialogAction>
-              </AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleCodeChange(resolvedDefaultCode)}
+                  >
+                    Reset
+                  </AlertDialogAction>
+                </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           </div>

@@ -29,9 +29,23 @@ export async function GET(request: Request) {
       })
     : null
 
+  const sessionCode =
+    code ??
+    (await prisma.participantCode.findFirst({
+      where: {
+        sessionId: participant.sessionId,
+        blockId,
+      },
+      orderBy: { updatedAt: "desc" },
+      select: { code: true, updatedAt: true },
+    }))
+
   return NextResponse.json({
-    code: code?.code ?? null,
-    updatedAt: code?.updatedAt ?? null,
+    code:
+      typeof sessionCode?.code === "string" && sessionCode.code.trim().length > 0
+        ? sessionCode.code
+        : null,
+    updatedAt: sessionCode?.updatedAt ?? null,
   })
 }
 
@@ -81,6 +95,35 @@ export async function POST(request: Request) {
         code,
       },
     })
+  } else {
+    const existingSessionCode = await prisma.participantCode.findFirst({
+      where: {
+        sessionId: participant.sessionId,
+        blockId,
+      },
+      select: { id: true },
+      orderBy: { updatedAt: "desc" },
+    })
+
+    if (existingSessionCode) {
+      await prisma.participantCode.update({
+        where: { id: existingSessionCode.id },
+        data: {
+          code,
+          classId: participant.classId,
+        },
+      })
+    } else {
+      await prisma.participantCode.create({
+        data: {
+          sessionId: participant.sessionId,
+          participantId: null,
+          classId: participant.classId,
+          blockId,
+          code,
+        },
+      })
+    }
   }
 
   return NextResponse.json({ ok: true })
