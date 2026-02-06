@@ -1,19 +1,21 @@
-import bcrypt from "bcryptjs"
-import prismaPkg from "@prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
-import pgPkg from "pg"
+import bcrypt from "bcryptjs";
+import prismaPkg from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import pgPkg from "pg";
 
-const { PrismaClient } = prismaPkg
-const { Pool } = pgPkg
+const { PrismaClient } = prismaPkg;
+const { Pool } = pgPkg;
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-})
+  connectionString:
+    process.env.DATABASE_URL ||
+    "postgresql://postgres:postgres@localhost:5432/dive",
+});
 const prisma = new PrismaClient({
   adapter: new PrismaPg(pool),
-})
+});
 
 async function main() {
-  const passwordHash = await bcrypt.hash("test123", 12)
+  const passwordHash = await bcrypt.hash("test123", 12);
 
   await prisma.admin.upsert({
     where: { email: "test@example.com" },
@@ -26,15 +28,15 @@ async function main() {
       email: "test@example.com",
       password: passwordHash,
     },
-  })
+  });
 }
 
 main()
   .catch((error) => {
-    console.error(error)
-    process.exit(1)
+    console.error(error);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-    await pool.end()
-  })
+    await prisma.$disconnect();
+    await pool.end();
+  });

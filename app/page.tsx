@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -13,13 +14,15 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
-import { ThemeToggle } from "@/components/theme-toggle"
+import Dither from "@/components/Dither"
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp"
 
 export default function Page() {
   const router = useRouter()
   const [error, setError] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [isBackgroundReady, setIsBackgroundReady] = React.useState(false)
+  const [hideFallback, setHideFallback] = React.useState(false)
   const [mode, setMode] = React.useState<"new" | "code">("new")
   const [participantCode, setParticipantCode] = React.useState("")
 
@@ -28,6 +31,18 @@ export default function Page() {
       setParticipantCode("")
     }
   }, [mode])
+
+  React.useEffect(() => {
+    if (!isBackgroundReady) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setHideFallback(true)
+    }, 180)
+
+    return () => window.clearTimeout(timer)
+  }, [isBackgroundReady])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -62,7 +77,7 @@ export default function Page() {
       }
 
       router.push("/app")
-    } catch (err) {
+    } catch {
       setError("Login failed.")
     } finally {
       setIsSubmitting(false)
@@ -70,113 +85,187 @@ export default function Page() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-muted/30 px-6 py-16">
-      <div className="absolute right-6 top-6">
-        <ThemeToggle />
-      </div>
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Enter access</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex rounded-lg border bg-muted/20 p-1 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setMode("new")}
-              className={`flex-1 rounded-md px-3 py-2 transition ${
-                mode === "new"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              New participant
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("code")}
-              className={`flex-1 rounded-md px-3 py-2 transition ${
-                mode === "code"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Use my code
-            </button>
+    <main
+      className="dark relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-16"
+      style={{
+        position: "relative",
+        minHeight: "100vh",
+        overflow: "hidden",
+        backgroundColor: "#050507",
+      }}
+    >
+      <div className="absolute inset-0" style={{ position: "absolute", inset: 0 }}>
+        <div
+          className="relative h-full w-full"
+          style={{ width: "100%", height: "100%", position: "relative" }}
+        >
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ position: "absolute", inset: 0, backgroundColor: "#050507" }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage:
+                "radial-gradient(circle at 48% 24%, #6f2391 0%, #2f0a4f 33%, #0a0a0f 72%, #050507 100%)",
+              opacity: hideFallback ? 0 : 1,
+              transition: "opacity 900ms ease-out",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              position: "absolute",
+              inset: 0,
+              opacity: hideFallback ? 1 : 0,
+              transition: "opacity 900ms ease-out",
+            }}
+          >
+            <Dither
+              waveColor={[0.43, 0.18, 0.53]}
+              disableAnimation={false}
+              enableMouseInteraction={false}
+              mouseRadius={1}
+              colorNum={6}
+              pixelSize={3}
+              waveAmplitude={0.3}
+              waveFrequency={3}
+              waveSpeed={0.03}
+              onReady={() => setIsBackgroundReady(true)}
+            />
           </div>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <FieldGroup>
-              {mode === "new" ? (
-                <>
+        </div>
+      </div>
+      <div className="pointer-events-none absolute inset-0 dark:bg-[radial-gradient(circle_at_50%_35%,rgba(15,23,42,0)_0%,rgba(2,6,23,0.5)_55%,rgba(2,6,23,0.88)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.08),rgba(15,23,42,0.35))]" />
+      <div className="relative z-10 w-full max-w-md">
+        <div className="pointer-events-none absolute -inset-px rounded-[1.75rem] bg-gradient-to-br from-fuchsia-500/40 via-cyan-400/30 to-transparent opacity-70 blur-sm dark:opacity-45" />
+        <Card className="relative w-full overflow-hidden rounded-[1.65rem] border border-white/30 bg-white/72 shadow-[0_24px_90px_rgba(15,23,42,0.3)] backdrop-blur-2xl dark:border-white/12 dark:bg-black/45 dark:shadow-[0_24px_90px_rgba(0,0,0,0.7)]">
+          <CardHeader className="space-y-4 text-center">
+            <div className="mx-auto flex items-center justify-center">
+              <Image
+                src="/dive.png"
+                alt="Dive Workshop"
+                width={80}
+                height={80}
+                className="h-20 w-20"
+              />
+            </div>
+            <div className="space-y-1">
+              <CardTitle className="text-3xl tracking-tight">Dive Workshop</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Dive into the world of programming!
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-5 grid grid-cols-2 rounded-xl border border-white/30 bg-white/40 p-1 text-xs font-semibold shadow-inner dark:border-white/10 dark:bg-white/5">
+              <button
+                type="button"
+                onClick={() => setMode("new")}
+                className={`rounded-lg px-3 py-2 transition ${
+                  mode === "new"
+                    ? "bg-white/95 text-foreground shadow-sm dark:bg-white/15"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                New participant
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("code")}
+                className={`rounded-lg px-3 py-2 transition ${
+                  mode === "code"
+                    ? "bg-white/95 text-foreground shadow-sm dark:bg-white/15"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Login with code
+              </button>
+            </div>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <FieldGroup>
+                {mode === "new" ? (
+                  <>
+                    <Field>
+                      <FieldLabel htmlFor="name">Name</FieldLabel>
+                      <Input
+                        id="name"
+                        name="name"
+                        placeholder="Your name"
+                        autoComplete="name"
+                        className="border-white/35 bg-white/80 backdrop-blur-sm dark:border-white/10 dark:bg-white/5"
+                        required
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="access-code">Access code</FieldLabel>
+                      <Input
+                        id="access-code"
+                        name="accessCode"
+                        placeholder="Enter access code"
+                        autoComplete="one-time-code"
+                        className="border-white/35 bg-white/80 backdrop-blur-sm dark:border-white/10 dark:bg-white/5"
+                        required
+                      />
+                    </Field>
+                  </>
+                ) : (
                   <Field>
-                    <FieldLabel htmlFor="name">Name</FieldLabel>
-                    <Input
-                      id="name"
-                      name="name"
-                      placeholder="Your name"
-                      autoComplete="name"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="access-code">Class access code</FieldLabel>
-                    <Input
-                      id="access-code"
-                      name="accessCode"
-                      placeholder="Enter class code"
-                      autoComplete="one-time-code"
-                      required
-                    />
-                  </Field>
-                </>
-              ) : (
-                <Field>
-                  <FieldLabel htmlFor="participant-code">Participant code</FieldLabel>
+                    <FieldLabel htmlFor="participant-code">Participant code</FieldLabel>
                     <InputOTP
                       maxLength={8}
                       value={participantCode}
-                    onChange={(value) => {
-                      setParticipantCode(
-                        value.toUpperCase().replace(/[^A-Z0-9]/g, "")
-                      )
-                    }}
+                      onChange={(value) => {
+                        setParticipantCode(
+                          value.toUpperCase().replace(/[^A-Z0-9]/g, "")
+                        )
+                      }}
                       autoComplete="one-time-code"
                       autoCorrect="off"
                       autoCapitalize="characters"
                       spellCheck={false}
-                    inputMode="text"
-                    pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-                    containerClassName="justify-between"
-                    render={({ slots }) => (
-                      <InputOTPGroup>
-                        {slots.map((slot, index) => (
-                          <InputOTPSlot key={index} slot={slot} />
-                        ))}
-                      </InputOTPGroup>
-                    )}
-                  >
-                  </InputOTP>
-                </Field>
-              )}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={
-                  isSubmitting || (mode === "code" && participantCode.length < 8)
-                }
-              >
-                {isSubmitting ? "Joining..." : "Continue"}
-              </Button>
-            </FieldGroup>
-          </form>
-          {error ? (
-            <p className="mt-3 text-sm text-destructive">{error}</p>
-          ) : null}
-        </CardContent>
-      </Card>
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center">
+                      inputMode="text"
+                      pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
+                      className="w-full"
+                      containerClassName="w-full justify-between"
+                      render={({ slots }) => (
+                        <InputOTPGroup className="w-full justify-between">
+                          {slots.map((slot, index) => (
+                            <InputOTPSlot
+                              key={index}
+                              slot={slot}
+                              className="h-11 w-9 border-white/35 bg-white/80 dark:border-white/10 dark:bg-white/5"
+                            />
+                          ))}
+                        </InputOTPGroup>
+                      )}
+                    />
+                  </Field>
+                )}
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-500 text-white shadow-lg shadow-purple-900/30 transition hover:brightness-105 dark:shadow-purple-950/50"
+                  disabled={
+                    isSubmitting || (mode === "code" && participantCode.length < 8)
+                  }
+                >
+                  {isSubmitting ? "Joining..." : "Continue"}
+                </Button>
+              </FieldGroup>
+            </form>
+            {error ? (
+              <p className="mt-3 text-sm text-destructive">{error}</p>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
+      <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-center">
         <Link
           href="/admin-login"
-          className="text-xs text-muted-foreground/70 transition hover:text-muted-foreground hover:underline"
+          className="text-xs text-muted-foreground/55 transition hover:text-muted-foreground hover:underline"
         >
           admin login
         </Link>

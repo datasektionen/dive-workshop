@@ -3,7 +3,7 @@ import { defineConfig } from "prisma/config";
 
 const databaseUrl =
   process.env.DATABASE_URL ??
-  "postgresql://user:pass@localhost:5432/dive?schema=public";
+  "postgresql://postgres:postgres@localhost:5432/dive";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

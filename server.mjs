@@ -11,7 +11,9 @@ const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString:
+    process.env.DATABASE_URL ||
+    "postgresql://postgres:postgres@localhost:5432/dive",
 });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter, log: ["error"] });
@@ -54,7 +56,11 @@ async function authenticate(request) {
     return null;
   }
   if (session.type === ADMIN_SESSION_TYPE) {
-    return { role: "admin", adminId: session.adminId, name: session.admin?.fullName };
+    return {
+      role: "admin",
+      adminId: session.adminId,
+      name: session.admin?.fullName,
+    };
   }
   if (session.type === PARTICIPANT_SESSION_TYPE) {
     return {
@@ -128,9 +134,15 @@ app.prepare().then(() => {
       }
 
       if (auth.role === "admin") {
-        if (payload?.type === "subscribe" && typeof payload.participantId === "string") {
+        if (
+          payload?.type === "subscribe" &&
+          typeof payload.participantId === "string"
+        ) {
           adminSubscriptions.set(ws, new Set([payload.participantId]));
-          sendJson(ws, { type: "subscribed", participantId: payload.participantId });
+          sendJson(ws, {
+            type: "subscribed",
+            participantId: payload.participantId,
+          });
           const latest = latestCodeByParticipant.get(payload.participantId);
           if (latest) {
             sendJson(ws, { type: "code_update", ...latest });
@@ -150,7 +162,7 @@ app.prepare().then(() => {
           };
           latestCodeByParticipant.set(auth.participantId, snapshot);
           const adminTargets = Array.from(adminSockets).filter((adminSocket) =>
-            adminSubscriptions.get(adminSocket)?.has(auth.participantId)
+            adminSubscriptions.get(adminSocket)?.has(auth.participantId),
           );
           for (const adminSocket of adminTargets) {
             sendJson(adminSocket, { type: "code_update", ...snapshot });
