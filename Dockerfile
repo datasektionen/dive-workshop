@@ -44,7 +44,7 @@ COPY --from=builder /app/docker/entrypoint.sh ./docker/entrypoint.sh
 
 # Change ownership of the app directory
 RUN chown -R nextjs:nodejs /app \
-  && chmod +x /app/docker/entrypoint.sh /app/docker/entrypoint2.sh
+  && chmod +x /app/docker/entrypoint.sh
 
 USER nextjs
 
