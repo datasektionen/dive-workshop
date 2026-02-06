@@ -5,7 +5,9 @@ import Link from "next/link"
 
 import { DataTable } from "@/components/admin/data-table"
 import { PageHeader } from "@/components/admin/page-header"
+import { TableSearch } from "@/components/admin/table-search"
 import { Button } from "@/components/ui/button"
+import { matchesSearchQuery } from "@/lib/admin/search"
 
 type ParticipantRow = {
   id: string
@@ -21,6 +23,7 @@ type ParticipantRow = {
 export default function ParticipantsPage() {
   const [participants, setParticipants] = React.useState<ParticipantRow[]>([])
   const [error, setError] = React.useState("")
+  const [query, setQuery] = React.useState("")
 
   React.useEffect(() => {
     let active = true
@@ -35,7 +38,7 @@ export default function ParticipantsPage() {
         if (active) {
           setParticipants(data.participants)
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setError("Unable to load participants.")
         }
@@ -58,10 +61,21 @@ export default function ParticipantsPage() {
         throw new Error("Failed to delete participant.")
       }
       setParticipants((prev) => prev.filter((participant) => participant.id !== id))
-    } catch (err) {
+    } catch {
       setError("Unable to delete participant.")
     }
   }
+
+  const filteredParticipants = React.useMemo(() => {
+    return participants.filter((participant) =>
+      matchesSearchQuery(query, [
+        participant.name,
+        participant.code,
+        participant.className,
+        participant.classTitle,
+      ])
+    )
+  }, [participants, query])
 
   return (
     <div className="space-y-6">
@@ -76,9 +90,14 @@ export default function ParticipantsPage() {
       />
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <TableSearch
+        value={query}
+        onChange={setQuery}
+        placeholder="Search participants"
+      />
 
       <DataTable
-        data={participants}
+        data={filteredParticipants}
         emptyText="No participants found."
         columns={[
           {

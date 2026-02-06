@@ -19,7 +19,8 @@ export const metadata: Metadata = {
   title: "Dive Workshop",
   description: "Dive Workshop learning environment",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.ico?v=2",
+    shortcut: "/favicon.ico?v=2",
   },
 }
 

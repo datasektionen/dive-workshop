@@ -51,6 +51,7 @@ model Class {
   name        String
   description String
   accessCode  String
+  active      Boolean  @default(true)
   courseId    String
   startDate   DateTime?
   endDate     DateTime?
@@ -101,9 +102,11 @@ model Module {
 model Block {
   id          String        @id @default(cuid())
   type        BlockType
+  name        String        @default("")
   title       String
   description String
   body        String
+  defaultCode String        @default("")
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   modules     ModuleBlock[]

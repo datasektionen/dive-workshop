@@ -5,12 +5,15 @@ import Link from "next/link"
 
 import { DataTable } from "@/components/admin/data-table"
 import { PageHeader } from "@/components/admin/page-header"
+import { TableSearch } from "@/components/admin/table-search"
 import { Button } from "@/components/ui/button"
+import { matchesSearchQuery } from "@/lib/admin/search"
 import type { BlockSummary } from "@/lib/content/types"
 
 export default function BlocksPage() {
   const [blocks, setBlocks] = React.useState<BlockSummary[]>([])
   const [error, setError] = React.useState("")
+  const [query, setQuery] = React.useState("")
 
   React.useEffect(() => {
     let active = true
@@ -25,7 +28,7 @@ export default function BlocksPage() {
         if (active) {
           setBlocks(data.blocks)
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setError("Unable to load blocks.")
         }
@@ -49,10 +52,21 @@ export default function BlocksPage() {
         throw new Error("Delete failed.")
       }
       setBlocks((prev) => prev.filter((item) => item.id !== id))
-    } catch (err) {
+    } catch {
       setError("Unable to delete block.")
     }
   }
+
+  const filteredBlocks = React.useMemo(() => {
+    return blocks.filter((item) =>
+      matchesSearchQuery(query, [
+        item.name,
+        item.title,
+        item.description,
+        item.type,
+      ])
+    )
+  }, [blocks, query])
 
   return (
     <div className="space-y-6">
@@ -67,14 +81,25 @@ export default function BlocksPage() {
       />
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <TableSearch
+        value={query}
+        onChange={setQuery}
+        placeholder="Search blocks (name, title, type...)"
+      />
 
       <DataTable
-        data={blocks}
+        data={filteredBlocks}
         emptyText="No blocks found."
         columns={[
           {
-            header: "Title",
-            cell: (item) => <span className="font-medium">{item.title}</span>,
+            header: "Name",
+            cell: (item) => <span className="font-medium">{item.name}</span>,
+          },
+          {
+            header: "Learner title",
+            cell: (item) => (
+              <span className="text-muted-foreground">{item.title}</span>
+            ),
           },
           {
             header: "Type",

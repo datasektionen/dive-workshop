@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     : null
 
   return NextResponse.json({
-    code: code?.code ?? "",
+    code: code?.code ?? null,
     updatedAt: code?.updatedAt ?? null,
   })
 }

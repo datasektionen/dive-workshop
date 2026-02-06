@@ -21,9 +21,11 @@ export async function GET(
     select: {
       id: true,
       type: true,
+      name: true,
       title: true,
       description: true,
       body: true,
+      defaultCode: true,
       createdAt: true,
     },
   })
@@ -47,17 +49,31 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { type, title, description, body: content } = body ?? {}
+  const {
+    type,
+    name,
+    title,
+    description,
+    body: content,
+    defaultCode,
+    default_code,
+  } = body ?? {}
 
   const data: {
     type?: BlockType
+    name?: string
     title?: string
     description?: string
     body?: string
+    defaultCode?: string
   } = {}
 
   if (isBlockType(type)) {
     data.type = type
+  }
+
+  if (typeof name === "string" && name.trim()) {
+    data.name = name.trim()
   }
 
   if (typeof title === "string" && title.trim()) {
@@ -72,6 +88,12 @@ export async function PATCH(
     data.body = content
   }
 
+  if (typeof defaultCode === "string") {
+    data.defaultCode = defaultCode
+  } else if (typeof default_code === "string") {
+    data.defaultCode = default_code
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "No changes provided." }, { status: 400 })
   }
@@ -83,14 +105,16 @@ export async function PATCH(
       select: {
         id: true,
         type: true,
+        name: true,
         title: true,
         description: true,
         body: true,
+        defaultCode: true,
         createdAt: true,
       },
     })
     return NextResponse.json({ block })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Update failed." }, { status: 400 })
   }
 }
@@ -109,7 +133,7 @@ export async function DELETE(
 
   try {
     await prisma.block.delete({ where: { id } })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Block not found." }, { status: 404 })
   }
 

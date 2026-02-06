@@ -6,11 +6,14 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/admin/data-table"
 import { PageHeader } from "@/components/admin/page-header"
+import { TableSearch } from "@/components/admin/table-search"
+import { matchesSearchQuery } from "@/lib/admin/search"
 import type { CourseSummary } from "@/lib/content/types"
 
 export default function CoursesPage() {
   const [courses, setCourses] = React.useState<CourseSummary[]>([])
   const [error, setError] = React.useState("")
+  const [query, setQuery] = React.useState("")
 
   React.useEffect(() => {
     let active = true
@@ -25,7 +28,7 @@ export default function CoursesPage() {
         if (active) {
           setCourses(data.courses)
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setError("Unable to load courses.")
         }
@@ -49,10 +52,16 @@ export default function CoursesPage() {
         throw new Error("Delete failed.")
       }
       setCourses((prev) => prev.filter((course) => course.id !== id))
-    } catch (err) {
+    } catch {
       setError("Unable to delete course.")
     }
   }
+
+  const filteredCourses = React.useMemo(() => {
+    return courses.filter((course) =>
+      matchesSearchQuery(query, [course.name, course.description])
+    )
+  }, [courses, query])
 
   return (
     <div className="space-y-6">
@@ -67,9 +76,14 @@ export default function CoursesPage() {
       />
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <TableSearch
+        value={query}
+        onChange={setQuery}
+        placeholder="Search courses"
+      />
 
       <DataTable
-        data={courses}
+        data={filteredCourses}
         emptyText="No courses found."
         columns={[
           {

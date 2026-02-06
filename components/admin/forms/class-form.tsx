@@ -22,6 +22,7 @@ type ClassDetail = {
   name: string
   description: string
   accessCode: string
+  active: boolean
   courseId: string
   startDate: string | null
   endDate: string | null
@@ -53,13 +54,14 @@ export function ClassForm({ classId }: ClassFormProps) {
   const [name, setName] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [accessCode, setAccessCode] = React.useState("")
+  const [active, setActive] = React.useState(true)
   const [startDate, setStartDate] = React.useState("")
   const [endDate, setEndDate] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState("")
 
   React.useEffect(() => {
-    let active = true
+    let isMounted = true
 
     async function loadData() {
       try {
@@ -86,12 +88,13 @@ export function ClassForm({ classId }: ClassFormProps) {
           const classData = (await classResponse.json()) as {
             class: ClassDetail
           }
-          if (active) {
+          if (isMounted) {
             setClassItem(classData.class)
             setTitle(classData.class.title)
             setName(classData.class.name)
             setDescription(classData.class.description || "")
             setAccessCode(classData.class.accessCode)
+            setActive(classData.class.active)
             setCourseId(classData.class.courseId)
             setStartDate(
               classData.class.startDate
@@ -104,20 +107,21 @@ export function ClassForm({ classId }: ClassFormProps) {
                 : ""
             )
           }
-        } else if (active) {
+        } else if (isMounted) {
           setTitle("")
           setName("")
           setDescription("")
           setAccessCode("")
+          setActive(true)
           setStartDate("")
           setEndDate("")
         }
 
-        if (active) {
+        if (isMounted) {
           setCourses(coursesData.courses)
         }
-      } catch (err) {
-        if (active) {
+      } catch {
+        if (isMounted) {
           setError("Unable to load class data.")
         }
       }
@@ -126,7 +130,7 @@ export function ClassForm({ classId }: ClassFormProps) {
     loadData()
 
     return () => {
-      active = false
+      isMounted = false
     }
   }, [classId])
 
@@ -148,6 +152,7 @@ export function ClassForm({ classId }: ClassFormProps) {
       name,
       description,
       accessCode,
+      active,
       courseId,
       startDate,
       endDate,
@@ -176,7 +181,7 @@ export function ClassForm({ classId }: ClassFormProps) {
       }
 
       router.push("/admin/classes")
-    } catch (err) {
+    } catch {
       setError("Save failed.")
     } finally {
       setIsSaving(false)
@@ -209,11 +214,14 @@ export function ClassForm({ classId }: ClassFormProps) {
             <Input
               id="title"
               name="title"
-              placeholder="Class title"
+              placeholder="Learner-facing class title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               required
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Shown to learners in the platform.
+            </p>
           </Field>
           <Field>
             <FieldLabel htmlFor="name">Name</FieldLabel>
@@ -225,6 +233,9 @@ export function ClassForm({ classId }: ClassFormProps) {
               onChange={(event) => setName(event.target.value)}
               required
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Used internally by admins and search.
+            </p>
           </Field>
           <Field>
             <FieldLabel htmlFor="description">Description</FieldLabel>
@@ -247,6 +258,29 @@ export function ClassForm({ classId }: ClassFormProps) {
               onChange={(event) => setAccessCode(event.target.value)}
               required
             />
+          </Field>
+          <Field>
+            <label
+              htmlFor="active"
+              className="flex cursor-pointer items-start gap-3 rounded-md border border-border/60 px-3 py-3"
+            >
+              <input
+                id="active"
+                name="active"
+                type="checkbox"
+                checked={active}
+                onChange={(event) => setActive(event.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary"
+              />
+              <span className="space-y-1">
+                <span className="block text-sm font-medium leading-none">
+                  Class is active
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Learners can only log in while this class is active.
+                </span>
+              </span>
+            </label>
           </Field>
           <Field>
             <FieldLabel htmlFor="startDate">Start date</FieldLabel>

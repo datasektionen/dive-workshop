@@ -6,6 +6,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/admin/data-table"
 import { PageHeader } from "@/components/admin/page-header"
+import { TableSearch } from "@/components/admin/table-search"
+import { matchesSearchQuery } from "@/lib/admin/search"
 
 type ClassItem = {
   id: string
@@ -13,6 +15,7 @@ type ClassItem = {
   name: string
   description: string
   accessCode: string
+  active: boolean
   startDate: string | null
   endDate: string | null
   createdAt: string
@@ -25,6 +28,7 @@ type ClassItem = {
 export default function ClassesPage() {
   const [classes, setClasses] = React.useState<ClassItem[]>([])
   const [error, setError] = React.useState("")
+  const [query, setQuery] = React.useState("")
 
   React.useEffect(() => {
     let active = true
@@ -39,7 +43,7 @@ export default function ClassesPage() {
         if (active) {
           setClasses(data.classes)
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setError("Unable to load classes.")
         }
@@ -63,10 +67,23 @@ export default function ClassesPage() {
         throw new Error("Delete failed.")
       }
       setClasses((prev) => prev.filter((item) => item.id !== id))
-    } catch (err) {
+    } catch {
       setError("Unable to delete class.")
     }
   }
+
+  const filteredClasses = React.useMemo(() => {
+    return classes.filter((item) =>
+      matchesSearchQuery(query, [
+        item.title,
+        item.name,
+        item.description,
+        item.accessCode,
+        item.active ? "active" : "closed",
+        item.course?.name,
+      ])
+    )
+  }, [classes, query])
 
   return (
     <div className="space-y-6">
@@ -81,14 +98,24 @@ export default function ClassesPage() {
       />
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <TableSearch
+        value={query}
+        onChange={setQuery}
+        placeholder="Search classes (name, title, access code...)"
+      />
 
       <DataTable
-        data={classes}
+        data={filteredClasses}
         emptyText="No classes found."
         columns={[
           {
-            header: "Title",
-            cell: (item) => <span className="font-medium">{item.title}</span>,
+            header: "Name",
+            cell: (item) => <span className="font-semibold">{item.name}</span>,
+          },
+          {
+            header: "Learner title",
+            cell: (item) => <span>{item.title}</span>,
+            className: "font-normal",
           },
           {
             header: "Course",
@@ -99,39 +126,29 @@ export default function ClassesPage() {
             ),
           },
           {
-            header: "Access code",
+            header: "Status",
             cell: (item) => (
-              <span className="font-mono text-xs text-muted-foreground">
-                {item.accessCode}
+              <span
+                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                  item.active
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                    : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
+                }`}
+              >
+                {item.active ? "Active" : "Closed"}
               </span>
             ),
           },
           {
-            header: "Created",
-            cell: (item) => new Date(item.createdAt).toLocaleDateString(),
-          },
-          {
-            header: "Dates",
+            header: "",
             cell: (item) => (
-              <span className="text-muted-foreground">
-                {item.startDate
-                  ? new Date(item.startDate).toLocaleString()
-                  : "—"}{" "}
-                →{" "}
-                {item.endDate
-                  ? new Date(item.endDate).toLocaleString()
-                  : "—"}
-              </span>
+              <div className="flex justify-end">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/admin/classes/${item.id}/overview`}>View</Link>
+                </Button>
+              </div>
             ),
-          },
-          {
-            header: "View",
-            cell: (item) => (
-              <Button asChild size="sm" className="px-5">
-                <Link href={`/admin/classes/${item.id}/overview`}>View</Link>
-              </Button>
-            ),
-            className: "w-[120px]",
+            className: "w-[96px] pr-0",
           },
         ]}
         actions={{

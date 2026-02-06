@@ -16,6 +16,7 @@ export async function GET() {
     select: {
       id: true,
       type: true,
+      name: true,
       title: true,
       description: true,
       createdAt: true,
@@ -33,7 +34,19 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { type, title, description, body: content } = body ?? {}
+  const {
+    type,
+    name,
+    title,
+    description,
+    body: content,
+    defaultCode,
+    default_code,
+  } = body ?? {}
+
+  if (typeof name !== "string" || !name.trim()) {
+    return NextResponse.json({ error: "Name is required." }, { status: 400 })
+  }
 
   if (typeof title !== "string" || !title.trim()) {
     return NextResponse.json({ error: "Title is required." }, { status: 400 })
@@ -46,16 +59,25 @@ export async function POST(request: Request) {
   const block = await prisma.block.create({
     data: {
       type,
+      name: name.trim(),
       title: title.trim(),
       description: typeof description === "string" ? description.trim() : "",
       body: typeof content === "string" ? content : "",
+      defaultCode:
+        typeof defaultCode === "string"
+          ? defaultCode
+          : typeof default_code === "string"
+            ? default_code
+            : "",
     },
     select: {
       id: true,
       type: true,
+      name: true,
       title: true,
       description: true,
       body: true,
+      defaultCode: true,
       createdAt: true,
     },
   })

@@ -1,9 +1,21 @@
 "use client"
 
 import * as React from "react"
+import { RotateCcwIcon } from "lucide-react"
 
 import { Emulator } from "@/components/imagicharm/Emulator"
 import { Editor } from "@/components/imagicharm/Editor"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { ImagiCharmBleClient } from "@/lib/imagicharm/ble"
 import { ImagiCharmRuntime, getPythonErrorMessage } from "@/lib/imagicharm/runtime"
@@ -25,6 +37,8 @@ type LearningCodeTaskProps = {
   blockId?: string
   moduleId?: string
   initialCode?: string
+  defaultCode?: string
+  onCodeChange?: (nextCode: string) => void
 }
 
 export function LearningCodeTask({
@@ -32,8 +46,14 @@ export function LearningCodeTask({
   blockId,
   moduleId,
   initialCode,
+  defaultCode,
+  onCodeChange,
 }: LearningCodeTaskProps) {
-  const [code, setCode] = React.useState(initialCode ?? DEFAULT_CODE)
+  const resolvedDefaultCode =
+    typeof defaultCode === "string" && defaultCode.trim()
+      ? defaultCode
+      : DEFAULT_CODE
+  const [code, setCode] = React.useState(initialCode ?? resolvedDefaultCode)
   const [matrix, setMatrix] = React.useState<Matrix>(EMPTY_MATRIX)
   const [error, setError] = React.useState("")
   const [bleError, setBleError] = React.useState("")
@@ -49,17 +69,62 @@ export function LearningCodeTask({
   const wsClosedRef = React.useRef(false)
   const latestCodeRef = React.useRef(code)
   const latestBlockRef = React.useRef(blockId)
+  const previousBlockIdRef = React.useRef<string | undefined>(blockId)
+  latestBlockRef.current = blockId
+
+  const handleCodeChange = React.useCallback(
+    (nextCode: string) => {
+      latestCodeRef.current = nextCode
+      setCode(nextCode)
+      onCodeChange?.(nextCode)
+    },
+    [onCodeChange]
+  )
+
+  const persistCode = React.useCallback(
+    async (targetBlockId: string, targetCode: string, keepalive = false) => {
+      try {
+        await fetch("/api/code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blockId: targetBlockId,
+            code: targetCode,
+          }),
+          keepalive,
+        })
+      } catch {
+        // Ignore autosave errors.
+      }
+    },
+    []
+  )
 
   React.useEffect(() => {
-    latestCodeRef.current = code
-    latestBlockRef.current = blockId
-  }, [code, blockId])
+    const previousBlockId = previousBlockIdRef.current
+    if (previousBlockId && previousBlockId !== blockId) {
+      // Flush save for the previous block before switching context.
+      void persistCode(previousBlockId, latestCodeRef.current)
+    }
+    previousBlockIdRef.current = blockId
+  }, [blockId, persistCode])
+
+  React.useEffect(() => {
+    return () => {
+      const currentBlockId = previousBlockIdRef.current
+      if (currentBlockId) {
+        // Best-effort save when leaving the page/component.
+        void persistCode(currentBlockId, latestCodeRef.current, true)
+      }
+    }
+  }, [persistCode])
 
   React.useEffect(() => {
     if (!blockId) return
-    if (initialCode == null) return
-    setCode(initialCode || DEFAULT_CODE)
-  }, [initialCode, blockId])
+    const nextCode = initialCode ?? resolvedDefaultCode
+    latestCodeRef.current = nextCode
+    setCode((prevCode) => (prevCode === nextCode ? prevCode : nextCode))
+  }, [initialCode, blockId, resolvedDefaultCode])
 
   React.useEffect(() => {
     bleRef.current = new ImagiCharmBleClient({
@@ -107,7 +172,7 @@ export function LearningCodeTask({
         if (active && data.sessionId) {
           setSessionId(data.sessionId)
         }
-      } catch (err) {
+      } catch {
         // Ignore session errors.
       }
     }
@@ -169,7 +234,7 @@ export function LearningCodeTask({
         JSON.stringify({
           type: "code_update",
           blockId,
-          code,
+          code: latestCodeRef.current,
         })
       )
     }, 350)
@@ -180,17 +245,10 @@ export function LearningCodeTask({
   React.useEffect(() => {
     if (!blockId) return
     const handle = window.setTimeout(() => {
-      void fetch("/api/code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          blockId,
-          code,
-        }),
-      })
+      void persistCode(blockId, latestCodeRef.current)
     }, 600)
     return () => window.clearTimeout(handle)
-  }, [code, blockId])
+  }, [code, blockId, persistCode])
 
   async function handleConnect() {
     setBleError("")
@@ -229,6 +287,7 @@ export function LearningCodeTask({
     setError("")
     setBleError("")
     setIsRunning(true)
+    const runCode = latestCodeRef.current
 
     try {
       if (!runtimeRef.current) {
@@ -236,7 +295,7 @@ export function LearningCodeTask({
           setMatrix(nextMatrix)
         })
       }
-      await runtimeRef.current.run(code)
+      await runtimeRef.current.run(runCode)
       if (blockId) {
         void fetch("/api/events", {
           method: "POST",
@@ -249,7 +308,7 @@ export function LearningCodeTask({
         })
       }
     } catch (err) {
-      setError(getPythonErrorMessage(err, code))
+      setError(getPythonErrorMessage(err, runCode))
     } finally {
       setIsRunning(false)
     }
@@ -266,7 +325,7 @@ export function LearningCodeTask({
         <div className="min-h-0 flex-1 overflow-hidden">
           <Editor
             value={code}
-            onChange={setCode}
+            onChange={handleCodeChange}
             height="100%"
             className="h-full"
           />
@@ -279,14 +338,43 @@ export function LearningCodeTask({
           <Emulator matrix={matrix} />
         </div>
         <div className="flex flex-col gap-2">
-          <Button
-            onClick={handleRun}
-            size="sm"
-            className="w-full"
-            disabled={isRunning}
-          >
-            {isRunning ? "Running..." : "Run"}
-          </Button>
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <Button
+              onClick={handleRun}
+              size="sm"
+              className="w-full"
+              disabled={isRunning}
+            >
+              {isRunning ? "Running..." : "Run"}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label="Reset code to default"
+                  disabled={code === resolvedDefaultCode}
+                >
+                  <RotateCcwIcon className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset code?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will replace your current code with the block default
+                    code.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleCodeChange(resolvedDefaultCode)}>
+                  Reset
+                </AlertDialogAction>
+              </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={handleConnect}

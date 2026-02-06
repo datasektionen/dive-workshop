@@ -23,6 +23,7 @@ export async function GET(
       name: true,
       description: true,
       accessCode: true,
+      active: true,
       courseId: true,
       startDate: true,
       endDate: true,
@@ -49,14 +50,23 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { title, name, description, accessCode, courseId, startDate, endDate } =
-    body ?? {}
+  const {
+    title,
+    name,
+    description,
+    accessCode,
+    active,
+    courseId,
+    startDate,
+    endDate,
+  } = body ?? {}
 
   const data: {
     title?: string
     name?: string
     description?: string
     accessCode?: string
+    active?: boolean
     courseId?: string
     startDate?: Date | null
     endDate?: Date | null
@@ -75,6 +85,10 @@ export async function PATCH(
 
   if (typeof accessCode === "string" && accessCode.trim()) {
     data.accessCode = accessCode.trim()
+  }
+
+  if (typeof active === "boolean") {
+    data.active = active
   }
 
   if (typeof courseId === "string" && courseId.trim()) {
@@ -125,6 +139,7 @@ export async function PATCH(
         name: true,
         description: true,
         accessCode: true,
+        active: true,
         courseId: true,
         startDate: true,
         endDate: true,
@@ -132,7 +147,7 @@ export async function PATCH(
       },
     })
     return NextResponse.json({ class: classItem })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Update failed." }, { status: 400 })
   }
 }
@@ -151,7 +166,7 @@ export async function DELETE(
 
   try {
     await prisma.class.delete({ where: { id } })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Class not found." }, { status: 404 })
   }
 

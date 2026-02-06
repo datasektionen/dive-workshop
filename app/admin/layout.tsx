@@ -6,15 +6,13 @@ import {
   GraduationCapIcon,
   LayoutDashboardIcon,
   LayoutGridIcon,
-  LayersIcon,
-  SearchIcon,
   UserRoundIcon,
   UsersIcon,
 } from "lucide-react"
 
+import { AdminGlobalSearch } from "@/components/admin/admin-global-search"
 import { AdminSidebarAccount } from "@/components/admin/admin-sidebar-account"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Input } from "@/components/ui/input"
 import {
   Sidebar,
   SidebarContent,
@@ -28,7 +26,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { getAdminFromSessionToken, getSessionCookieName } from "@/lib/auth"
@@ -125,10 +122,7 @@ export default async function AdminLayout({
             <SidebarTrigger className="md:hidden" />
 
             <div className="ml-auto flex items-center gap-2">
-              <div className="relative hidden min-w-[260px] items-center md:flex">
-                <SearchIcon className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Search" />
-              </div>
+              <AdminGlobalSearch />
               <ThemeToggle />
             </div>
           </header>

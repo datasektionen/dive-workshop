@@ -9,6 +9,7 @@ export function isBlockType(value: unknown): value is BlockType {
 export type BlockSummary = {
   id: string
   type: BlockType
+  name: string
   title: string
   description: string
   createdAt: string
@@ -16,6 +17,7 @@ export type BlockSummary = {
 
 export type BlockDetail = BlockSummary & {
   body: string
+  defaultCode: string
 }
 
 export type ModuleSummary = {

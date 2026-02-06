@@ -20,7 +20,16 @@ export async function POST(request: Request) {
 
   const participant = await prisma.participant.findUnique({
     where: { code: participantCode },
-    select: { id: true, classId: true, name: true },
+    select: {
+      id: true,
+      classId: true,
+      name: true,
+      class: {
+        select: {
+          active: true,
+        },
+      },
+    },
   })
 
   if (!participant || !participant.classId) {
@@ -28,6 +37,10 @@ export async function POST(request: Request) {
       { error: "Invalid participant code." },
       { status: 401 }
     )
+  }
+
+  if (!participant.class?.active) {
+    return NextResponse.json({ error: "This class is closed." }, { status: 403 })
   }
 
   const token = crypto.randomBytes(32).toString("hex")

@@ -5,8 +5,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   const { name, accessCode } = await request.json();
+  const normalizedAccessCode =
+    typeof accessCode === "string" ? accessCode.trim() : "";
 
-  if (!name || !accessCode) {
+  if (!name || !normalizedAccessCode) {
     return NextResponse.json(
       { error: "Name and access code are required." },
       { status: 400 },
@@ -14,14 +16,21 @@ export async function POST(request: Request) {
   }
 
   const classItem = await prisma.class.findFirst({
-    where: { accessCode },
-    select: { id: true },
+    where: { accessCode: normalizedAccessCode },
+    select: { id: true, active: true },
   });
 
   if (!classItem) {
     return NextResponse.json(
       { error: "Invalid access code." },
       { status: 401 },
+    );
+  }
+
+  if (!classItem.active) {
+    return NextResponse.json(
+      { error: "This class is closed." },
+      { status: 403 },
     );
   }
 

@@ -3,43 +3,21 @@
 import * as React from "react"
 
 import Image from "next/image"
+import { Loader2Icon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ParticipantSidebarAccount } from "@/components/participant-sidebar-account"
 import { LearningCodeTask } from "@/components/imagicharm/learning-code-task"
-
-type LearningBlock = {
-  id: string
-  type: "text" | "code"
-  title: string
-  description: string
-  body: string
-}
-
-type LearningModule = {
-  id: string
-  name: string
-  title: string
-  description: string
-  blocks: LearningBlock[]
-}
-
-type LearningData = {
-  name: string
-  isPreview?: boolean
-  participantCode?: string | null
-  class: { id: string; title: string; name: string }
-  course: {
-    id: string
-    name: string
-    description: string
-    modules: LearningModule[]
-  }
-}
+import { MarkdownRenderer } from "@/components/markdown/markdown-renderer"
+import { getLearningNavigation } from "@/lib/learning/navigation"
+import { buildBlockSlugMaps } from "@/lib/learning/slug"
+import type { LearningData } from "@/lib/learning/types"
 
 export default function AppPage() {
   const [data, setData] = React.useState<LearningData | null>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [showContent, setShowContent] = React.useState(false)
   const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(
     null
   )
@@ -47,7 +25,9 @@ export default function AppPage() {
   const [splitRatio, setSplitRatio] = React.useState(50)
   const splitRef = React.useRef<HTMLDivElement | null>(null)
   const [isExitingPreview, setIsExitingPreview] = React.useState(false)
-  const [savedCode, setSavedCode] = React.useState<string | null>(null)
+  const [codeByBlockId, setCodeByBlockId] = React.useState<
+    Record<string, string>
+  >({})
   const sendEvent = React.useCallback(
     async (payload: { type: string; blockId?: string; moduleId?: string; metadata?: Record<string, unknown> }) => {
       try {
@@ -56,7 +36,7 @@ export default function AppPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
-      } catch (err) {
+      } catch {
         // Ignore event failures.
       }
     },
@@ -75,12 +55,14 @@ export default function AppPage() {
         const payload = (await response.json()) as LearningData
         if (active) {
           setData(payload)
-          const firstBlock = payload.course.modules[0]?.blocks[0] ?? null
-          setSelectedBlockId(firstBlock?.id ?? null)
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setError("Unable to load learning data.")
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false)
         }
       }
     }
@@ -92,23 +74,55 @@ export default function AppPage() {
     }
   }, [])
 
-  const modules = data?.course.modules ?? []
-  const allBlocks = modules.flatMap((moduleItem) =>
-    moduleItem.blocks.map((block) => ({
-      ...block,
-      moduleId: moduleItem.id,
-      moduleTitle: moduleItem.title,
-    }))
+  React.useEffect(() => {
+    if (isLoading) return
+
+    const frame = window.requestAnimationFrame(() => {
+      setShowContent(true)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [isLoading])
+
+  const modules = React.useMemo(() => data?.course.modules ?? [], [data])
+  const { allBlocks, currentBlock, prevBlock, nextBlock } = React.useMemo(
+    () => getLearningNavigation(modules, selectedBlockId),
+    [modules, selectedBlockId]
   )
-  const currentIndex = allBlocks.findIndex(
-    (block) => block.id === selectedBlockId
+  const blockSlugMaps = React.useMemo(
+    () => buildBlockSlugMaps(allBlocks),
+    [allBlocks]
   )
-  const currentBlock = currentIndex >= 0 ? allBlocks[currentIndex] : null
-  const prevBlock = currentIndex > 0 ? allBlocks[currentIndex - 1] : null
-  const nextBlock =
-    currentIndex >= 0 && currentIndex < allBlocks.length - 1
-      ? allBlocks[currentIndex + 1]
-      : null
+
+  React.useEffect(() => {
+    if (!data || selectedBlockId) return
+
+    const params = new URLSearchParams(window.location.search)
+    const slug = params.get("b")
+    if (slug) {
+      const matchedBlockId = blockSlugMaps.bySlug[slug]
+      if (matchedBlockId) {
+        setSelectedBlockId(matchedBlockId)
+        return
+      }
+    }
+
+    const firstBlockId = allBlocks[0]?.id ?? null
+    setSelectedBlockId(firstBlockId)
+  }, [data, selectedBlockId, blockSlugMaps.bySlug, allBlocks])
+
+  React.useEffect(() => {
+    if (!selectedBlockId) return
+    const slug = blockSlugMaps.byBlockId[selectedBlockId]
+    if (!slug) return
+
+    const url = new URL(window.location.href)
+    if (url.searchParams.get("b") === slug) return
+    url.searchParams.set("b", slug)
+    const nextQuery = url.searchParams.toString()
+    const nextUrl = `${url.pathname}${nextQuery ? `?${nextQuery}` : ""}${url.hash}`
+    window.history.replaceState(window.history.state, "", nextUrl)
+  }, [selectedBlockId, blockSlugMaps.byBlockId])
 
   React.useEffect(() => {
     if (!currentBlock?.id) return
@@ -123,25 +137,44 @@ export default function AppPage() {
     if (!currentBlock?.id) return
     const blockId = currentBlock.id
     let active = true
+
+    if (Object.prototype.hasOwnProperty.call(codeByBlockId, blockId)) {
+      return () => {
+        active = false
+      }
+    }
+
     async function loadCode() {
       try {
         const response = await fetch(`/api/code?blockId=${blockId}`)
         if (!response.ok) return
-        const payload = (await response.json()) as { code?: string }
+        const payload = (await response.json()) as { code?: string | null }
         if (active) {
-          setSavedCode(payload.code ?? "")
+          setCodeByBlockId((prev) => {
+            if (Object.prototype.hasOwnProperty.call(prev, blockId)) {
+              return prev
+            }
+            const fallbackDefaultCode = currentBlock.defaultCode.trim()
+              ? currentBlock.defaultCode
+              : undefined
+            if (typeof payload.code === "string") {
+              return { ...prev, [blockId]: payload.code }
+            }
+            if (fallbackDefaultCode) {
+              return { ...prev, [blockId]: fallbackDefaultCode }
+            }
+            return prev
+          })
         }
-      } catch (err) {
-        if (active) {
-          setSavedCode("")
-        }
+      } catch {
+        // Ignore code loading errors and rely on local default.
       }
     }
     loadCode()
     return () => {
       active = false
     }
-  }, [currentBlock?.id])
+  }, [currentBlock?.id, currentBlock?.defaultCode, codeByBlockId])
 
   function handleSplitPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!splitRef.current) return
@@ -165,8 +198,14 @@ export default function AppPage() {
   }
 
   return (
-    <main className="app-root flex h-[100dvh] w-full bg-background text-foreground">
-      <aside className="hidden w-72 shrink-0 border-r bg-muted/10 md:block">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-background text-foreground">
+      {data ? (
+        <main
+          className={`app-root flex h-[100dvh] w-full transition-opacity duration-500 ${
+            showContent ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <aside className="hidden w-72 shrink-0 border-r bg-muted/10 md:block">
         <div className="sticky top-0 flex h-[100dvh] flex-col gap-4 px-4 py-6">
           <div className="flex items-center gap-3">
             <Image src="/dive.png" alt="Dive" width={30} height={30} />
@@ -215,9 +254,9 @@ export default function AppPage() {
             />
           </div>
         </div>
-      </aside>
+          </aside>
 
-      <section className="flex h-[100dvh] flex-1 flex-col">
+          <section className="flex h-[100dvh] flex-1 flex-col">
         <header className="flex flex-wrap items-center gap-3 border-b px-6 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-muted-foreground">
@@ -302,17 +341,16 @@ export default function AppPage() {
                   gridTemplateRows: `calc(${splitRatio}% - 5px) 10px calc(${100 - splitRatio}% - 5px)`,
                 }}
               >
-                <div className="min-h-0 overflow-y-auto px-6 py-4">
-                  {currentBlock.body ? (
-                    <div
-                      className="prose max-w-none"
-                      dangerouslySetInnerHTML={{ __html: currentBlock.body }}
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      This block has no text content.
-                    </p>
-                  )}
+                <div className="min-h-0 overflow-y-auto px-6 pt-4 pb-2">
+                  <div className="mx-auto w-full">
+                    {currentBlock.body.trim() ? (
+                      <MarkdownRenderer content={currentBlock.body} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        This block has no text content.
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div
                   role="separator"
@@ -324,21 +362,35 @@ export default function AppPage() {
                 </div>
                 <div className="min-h-0 overflow-hidden">
                   <LearningCodeTask
+                    key={currentBlock.id}
                     className="h-full"
                     blockId={currentBlock.id}
                     moduleId={currentBlock.moduleId}
-                    initialCode={savedCode ?? undefined}
+                    initialCode={
+                      codeByBlockId[currentBlock.id] ??
+                      (currentBlock.defaultCode.trim()
+                        ? currentBlock.defaultCode
+                        : undefined)
+                    }
+                    defaultCode={
+                      currentBlock.defaultCode.trim()
+                        ? currentBlock.defaultCode
+                        : undefined
+                    }
+                    onCodeChange={(nextCode) => {
+                      setCodeByBlockId((prev) => {
+                        if (prev[currentBlock.id] === nextCode) return prev
+                        return { ...prev, [currentBlock.id]: nextCode }
+                      })
+                    }}
                   />
                 </div>
               </div>
             ) : (
-              <div className="flex min-h-0 flex-1 overflow-y-auto px-6 py-6">
-                {currentBlock.body ? (
-                  <div className="mx-auto w-full max-w-3xl">
-                    <div
-                      className="prose max-w-none"
-                      dangerouslySetInnerHTML={{ __html: currentBlock.body }}
-                    />
+              <div className="flex min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-2 mb-4">
+                {currentBlock.body.trim() ? (
+                  <div className="mx-auto w-full">
+                    <MarkdownRenderer content={currentBlock.body} />
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
@@ -353,7 +405,35 @@ export default function AppPage() {
             </p>
           )}
         </div>
-      </section>
-    </main>
+          </section>
+        </main>
+      ) : !isLoading ? (
+        <div
+          className={`flex h-[100dvh] w-full items-center justify-center transition-opacity duration-500 ${
+            showContent ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <p className="text-sm text-destructive">
+            {error || "Unable to load learning data."}
+          </p>
+        </div>
+      ) : null}
+
+      <div
+        className={`absolute inset-0 z-50 flex items-center justify-center bg-background transition-opacity duration-500 ${
+          isLoading ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div className="flex flex-col items-center gap-4 text-center">
+          <Loader2Icon className="h-14 w-14 animate-spin text-primary" />
+          <div className="space-y-1">
+            <p className="text-2xl font-semibold tracking-tight">Loading</p>
+            <p className="text-sm text-muted-foreground">
+              Preparing your learning workspace...
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

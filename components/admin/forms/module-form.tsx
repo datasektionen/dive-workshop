@@ -69,7 +69,7 @@ export function ModuleForm({ moduleId }: ModuleFormProps) {
         if (active) {
           setBlocks(blocksData.blocks)
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setError("Unable to load module data.")
         }
@@ -124,7 +124,7 @@ export function ModuleForm({ moduleId }: ModuleFormProps) {
       }
 
       router.push("/admin/modules")
-    } catch (err) {
+    } catch {
       setError("Save failed.")
     } finally {
       setIsSaving(false)
@@ -157,11 +157,14 @@ export function ModuleForm({ moduleId }: ModuleFormProps) {
             <Input
               id="name"
               name="name"
-              placeholder="Admin-only name"
+              placeholder="Module name"
               value={name}
               onChange={(event) => setName(event.target.value)}
               required
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Used internally by admins and search.
+            </p>
           </Field>
           <Field>
             <FieldLabel htmlFor="title">Title</FieldLabel>
@@ -173,6 +176,9 @@ export function ModuleForm({ moduleId }: ModuleFormProps) {
               onChange={(event) => setTitle(event.target.value)}
               required
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              This is shown to learners in the platform.
+            </p>
           </Field>
           <Field>
             <FieldLabel htmlFor="description">Description</FieldLabel>

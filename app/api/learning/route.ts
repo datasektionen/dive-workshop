@@ -42,6 +42,7 @@ export async function GET() {
                           title: true,
                           description: true,
                           body: true,
+                          defaultCode: true,
                         },
                       },
                     },

@@ -3,7 +3,8 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 
-import { RichTextEditor } from "@/components/admin/rich-text-editor"
+import { CodeEditor } from "@/components/admin/code-editor"
+import { MarkdownEditor } from "@/components/admin/markdown-editor"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -25,10 +26,12 @@ export function BlockForm({ blockId }: BlockFormProps) {
   const router = useRouter()
   const isEdit = Boolean(blockId)
   const [block, setBlock] = React.useState<BlockDetail | null>(null)
+  const [name, setName] = React.useState("")
   const [title, setTitle] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [type, setType] = React.useState<BlockType>("text")
   const [body, setBody] = React.useState("")
+  const [defaultCode, setDefaultCode] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState("")
 
@@ -45,12 +48,14 @@ export function BlockForm({ blockId }: BlockFormProps) {
         const data = (await response.json()) as { block: BlockDetail }
         if (active) {
           setBlock(data.block)
+          setName(data.block.name || "")
           setTitle(data.block.title)
           setDescription(data.block.description || "")
           setType(data.block.type)
           setBody(data.block.body || "")
+          setDefaultCode(data.block.defaultCode || "")
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setError("Unable to load block.")
         }
@@ -71,9 +76,11 @@ export function BlockForm({ blockId }: BlockFormProps) {
 
     const payload = {
       type,
+      name,
       title,
       description,
       body,
+      defaultCode: type === "code" ? defaultCode : "",
     }
 
     try {
@@ -90,7 +97,7 @@ export function BlockForm({ blockId }: BlockFormProps) {
       }
 
       router.push("/admin/blocks")
-    } catch (err) {
+    } catch {
       setError("Save failed.")
     } finally {
       setIsSaving(false)
@@ -119,6 +126,20 @@ export function BlockForm({ blockId }: BlockFormProps) {
       <form className="space-y-6" onSubmit={handleSubmit}>
         <FieldGroup>
           <Field>
+            <FieldLabel htmlFor="name">Name</FieldLabel>
+            <Input
+              id="name"
+              name="name"
+              placeholder="Block name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Used internally by admins. Learners do not see this value.
+            </p>
+          </Field>
+          <Field>
             <FieldLabel htmlFor="title">Title</FieldLabel>
             <Input
               id="title"
@@ -128,6 +149,9 @@ export function BlockForm({ blockId }: BlockFormProps) {
               onChange={(event) => setTitle(event.target.value)}
               required
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              This is shown to learners in the platform.
+            </p>
           </Field>
           <Field>
             <FieldLabel htmlFor="description">Description</FieldLabel>
@@ -153,9 +177,15 @@ export function BlockForm({ blockId }: BlockFormProps) {
             </Select>
           </Field>
           <Field>
-            <FieldLabel>Body</FieldLabel>
-            <RichTextEditor value={body} onChange={setBody} />
+            <FieldLabel>Content (Markdown)</FieldLabel>
+            <MarkdownEditor value={body} onChange={setBody} />
           </Field>
+          {type === "code" ? (
+            <Field>
+              <FieldLabel>Default code</FieldLabel>
+              <CodeEditor value={defaultCode} onChange={setDefaultCode} />
+            </Field>
+          ) : null}
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={isSaving}>
               {isSaving ? "Saving..." : isEdit ? "Save block" : "Create block"}

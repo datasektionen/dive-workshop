@@ -5,12 +5,15 @@ import Link from "next/link"
 
 import { DataTable } from "@/components/admin/data-table"
 import { PageHeader } from "@/components/admin/page-header"
+import { TableSearch } from "@/components/admin/table-search"
 import { Button } from "@/components/ui/button"
+import { matchesSearchQuery } from "@/lib/admin/search"
 import type { ModuleSummary } from "@/lib/content/types"
 
 export default function ModulesPage() {
   const [modules, setModules] = React.useState<ModuleSummary[]>([])
   const [error, setError] = React.useState("")
+  const [query, setQuery] = React.useState("")
 
   React.useEffect(() => {
     let active = true
@@ -25,7 +28,7 @@ export default function ModulesPage() {
         if (active) {
           setModules(data.modules)
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setError("Unable to load modules.")
         }
@@ -49,10 +52,16 @@ export default function ModulesPage() {
         throw new Error("Delete failed.")
       }
       setModules((prev) => prev.filter((item) => item.id !== id))
-    } catch (err) {
+    } catch {
       setError("Unable to delete module.")
     }
   }
+
+  const filteredModules = React.useMemo(() => {
+    return modules.filter((item) =>
+      matchesSearchQuery(query, [item.name, item.title, item.description])
+    )
+  }, [modules, query])
 
   return (
     <div className="space-y-6">
@@ -67,9 +76,14 @@ export default function ModulesPage() {
       />
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <TableSearch
+        value={query}
+        onChange={setQuery}
+        placeholder="Search modules (name, title...)"
+      />
 
       <DataTable
-        data={modules}
+        data={filteredModules}
         emptyText="No modules found."
         columns={[
           {
@@ -77,7 +91,7 @@ export default function ModulesPage() {
             cell: (item) => <span className="font-medium">{item.name}</span>,
           },
           {
-            header: "Title",
+            header: "Learner title",
             cell: (item) => (
               <span className="text-muted-foreground">
                 {item.title || "-"}

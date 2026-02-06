@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { MoreVerticalIcon, Trash2Icon } from "lucide-react"
 import { PageHeader } from "@/components/admin/page-header"
+import { TableSearch } from "@/components/admin/table-search"
+import { matchesSearchQuery } from "@/lib/admin/search"
 
 type ParticipantRow = {
   id: string
@@ -59,6 +61,14 @@ type OverviewPayload = {
   blocks: { id: string; blockTitle: string; moduleTitle: string }[]
 }
 
+type WsCodeUpdatePayload = {
+  type?: string
+  participantId?: string
+  code?: string
+  blockId?: string | null
+  updatedAt?: string | null
+}
+
 export default function ClassOverviewPage({
   params,
 }: {
@@ -82,6 +92,8 @@ export default function ClassOverviewPage({
   const [deleteTarget, setDeleteTarget] =
     React.useState<ParticipantRow | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
+  const [participantQuery, setParticipantQuery] = React.useState("")
+  const selectedParticipantId = selectedParticipant?.id ?? null
 
   React.useEffect(() => {
     selectedRef.current = selectedParticipant
@@ -112,7 +124,7 @@ export default function ClassOverviewPage({
       if (payload.participants.length > 0 && !selectedRef.current) {
         setSelectedParticipant(payload.participants[0])
       }
-    } catch (err) {
+    } catch {
       setError("Unable to load class overview.")
     }
   }, [])
@@ -148,17 +160,18 @@ export default function ClassOverviewPage({
       })
 
       socket.addEventListener("message", (event) => {
-        let payload: any
+        let payload: unknown
         try {
           payload = JSON.parse(event.data)
-        } catch (err) {
+        } catch {
           return
         }
-        if (payload?.type === "code_update") {
-          if (payload.participantId !== selectedParticipant?.id) return
-          setLiveCode(payload.code ?? "")
-          setLiveBlockId(payload.blockId ?? null)
-          setLiveUpdatedAt(payload.updatedAt ?? null)
+        const codeUpdate = payload as WsCodeUpdatePayload
+        if (codeUpdate.type === "code_update") {
+          if (codeUpdate.participantId !== selectedParticipantId) return
+          setLiveCode(codeUpdate.code ?? "")
+          setLiveBlockId(codeUpdate.blockId ?? null)
+          setLiveUpdatedAt(codeUpdate.updatedAt ?? null)
         }
       })
 
@@ -179,11 +192,11 @@ export default function ClassOverviewPage({
       socketRef.current?.close()
       socketRef.current = null
     }
-  }, [selectedParticipant?.id])
+  }, [selectedParticipantId])
 
   React.useEffect(() => {
-    if (!selectedParticipant || !classId) return
-    const participantId = selectedParticipant.id
+    if (!selectedParticipantId || !classId) return
+    const participantId = selectedParticipantId
     let active = true
     async function loadStoredCode() {
       try {
@@ -201,7 +214,7 @@ export default function ClassOverviewPage({
           setLiveBlockId(payload.blockId ?? null)
           setLiveUpdatedAt(payload.updatedAt ?? null)
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setLiveCode("")
           setLiveBlockId(null)
@@ -213,15 +226,26 @@ export default function ClassOverviewPage({
     return () => {
       active = false
     }
-  }, [selectedParticipant?.id, classId])
+  }, [selectedParticipantId, classId])
 
   React.useEffect(() => {
-    if (!selectedParticipant || !socketRef.current) return
+    if (!selectedParticipantId || !socketRef.current) return
     if (socketRef.current.readyState !== WebSocket.OPEN) return
     socketRef.current.send(
-      JSON.stringify({ type: "subscribe", participantId: selectedParticipant.id })
+      JSON.stringify({ type: "subscribe", participantId: selectedParticipantId })
     )
-  }, [selectedParticipant])
+  }, [selectedParticipantId])
+
+  const filteredParticipants = React.useMemo(() => {
+    const participants = data?.participants ?? []
+    return participants.filter((participant) =>
+      matchesSearchQuery(participantQuery, [
+        participant.name,
+        participant.participantCode,
+        participant.lastRunBlock,
+      ])
+    )
+  }, [data?.participants, participantQuery])
 
   if (!classId) {
     return <p className="text-sm text-muted-foreground">Loading...</p>
@@ -261,10 +285,10 @@ export default function ClassOverviewPage({
                     throw new Error("Preview failed.")
                   }
                   window.location.href = "/app"
-                } catch (err) {
-                  setError("Unable to start preview.")
-                } finally {
-                  setIsPreviewing(false)
+              } catch {
+                setError("Unable to start preview.")
+              } finally {
+                setIsPreviewing(false)
                 }
               }}
             >
@@ -349,11 +373,22 @@ export default function ClassOverviewPage({
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_40%]">
             <div className="rounded-xl border">
-              <div className="border-b px-4 py-3">
+              <div className="space-y-3 border-b px-4 py-3">
                 <h3 className="text-sm font-semibold">Participants</h3>
+                <TableSearch
+                  value={participantQuery}
+                  onChange={setParticipantQuery}
+                  placeholder="Search participants"
+                  className="max-w-none"
+                />
               </div>
               <div className="divide-y">
-                {data.participants.map((participant) => {
+                {filteredParticipants.length === 0 ? (
+                  <p className="px-4 py-5 text-sm text-muted-foreground">
+                    No participants found.
+                  </p>
+                ) : (
+                  filteredParticipants.map((participant) => {
                   const isActive = participant.id === selectedParticipant?.id
                   return (
                     <div
@@ -419,7 +454,8 @@ export default function ClassOverviewPage({
                       </DropdownMenu>
                     </div>
                   )
-                })}
+                })
+                )}
               </div>
             </div>
 
@@ -513,10 +549,10 @@ export default function ClassOverviewPage({
                     setSelectedParticipant(null)
                   }
                   await loadOverview(classId)
-                } catch (err) {
-                  setError("Unable to delete participant.")
-                } finally {
-                  setIsDeleting(false)
+                      } catch {
+                        setError("Unable to delete participant.")
+                      } finally {
+                        setIsDeleting(false)
                 }
               }}
             >

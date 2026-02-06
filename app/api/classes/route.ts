@@ -18,6 +18,7 @@ export async function GET() {
       name: true,
       description: true,
       accessCode: true,
+      active: true,
       startDate: true,
       endDate: true,
       createdAt: true,
@@ -41,8 +42,16 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { title, name, description, accessCode, courseId, startDate, endDate } =
-    body ?? {}
+  const {
+    title,
+    name,
+    description,
+    accessCode,
+    active,
+    courseId,
+    startDate,
+    endDate,
+  } = body ?? {}
 
   if (typeof title !== "string" || !title.trim()) {
     return NextResponse.json({ error: "Title is required." }, { status: 400 })
@@ -90,6 +99,7 @@ export async function POST(request: Request) {
       name: name.trim(),
       description: typeof description === "string" ? description.trim() : "",
       accessCode: accessCode.trim(),
+      active: typeof active === "boolean" ? active : true,
       courseId: courseId.trim(),
       startDate: parsedStart,
       endDate: parsedEnd,
@@ -100,6 +110,7 @@ export async function POST(request: Request) {
       name: true,
       description: true,
       accessCode: true,
+      active: true,
       startDate: true,
       endDate: true,
       createdAt: true,

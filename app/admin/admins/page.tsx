@@ -6,6 +6,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/admin/data-table"
 import { PageHeader } from "@/components/admin/page-header"
+import { TableSearch } from "@/components/admin/table-search"
+import { matchesSearchQuery } from "@/lib/admin/search"
 
 type Admin = {
   id: string
@@ -17,6 +19,7 @@ type Admin = {
 export default function AdminsPage() {
   const [admins, setAdmins] = React.useState<Admin[]>([])
   const [error, setError] = React.useState("")
+  const [query, setQuery] = React.useState("")
 
   React.useEffect(() => {
     let active = true
@@ -31,7 +34,7 @@ export default function AdminsPage() {
         if (active) {
           setAdmins(data.admins)
         }
-      } catch (err) {
+      } catch {
         if (active) {
           setError("Unable to load admins.")
         }
@@ -55,10 +58,16 @@ export default function AdminsPage() {
         throw new Error("Delete failed.")
       }
       setAdmins((prev) => prev.filter((admin) => admin.id !== id))
-    } catch (err) {
+    } catch {
       setError("Unable to delete admin.")
     }
   }
+
+  const filteredAdmins = React.useMemo(() => {
+    return admins.filter((admin) =>
+      matchesSearchQuery(query, [admin.fullName, admin.email])
+    )
+  }, [admins, query])
 
   return (
     <div className="space-y-6">
@@ -73,9 +82,14 @@ export default function AdminsPage() {
       />
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <TableSearch
+        value={query}
+        onChange={setQuery}
+        placeholder="Search admins"
+      />
 
       <DataTable
-        data={admins}
+        data={filteredAdmins}
         emptyText="No admins found."
         columns={[
           {
