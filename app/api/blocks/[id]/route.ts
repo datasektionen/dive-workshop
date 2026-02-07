@@ -114,6 +114,7 @@ export async function GET(
       description: true,
       body: true,
       defaultCode: true,
+      exampleSolution: true,
       createdAt: true,
     },
   })
@@ -145,6 +146,8 @@ export async function PATCH(
     body: content,
     defaultCode,
     default_code,
+    exampleSolution,
+    example_solution,
     markdownImagiCaches,
   } = body ?? {}
   const parsedMarkdownImagiCaches = parseMarkdownImagiCaches(markdownImagiCaches)
@@ -156,6 +159,7 @@ export async function PATCH(
     description?: string
     body?: string
     defaultCode?: string
+    exampleSolution?: string
   } = {}
 
   if (isBlockType(type)) {
@@ -184,6 +188,12 @@ export async function PATCH(
     data.defaultCode = default_code
   }
 
+  if (typeof exampleSolution === "string") {
+    data.exampleSolution = exampleSolution
+  } else if (typeof example_solution === "string") {
+    data.exampleSolution = example_solution
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "No changes provided." }, { status: 400 })
   }
@@ -201,6 +211,7 @@ export async function PATCH(
           description: true,
           body: true,
           defaultCode: true,
+          exampleSolution: true,
           createdAt: true,
         },
       })

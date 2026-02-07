@@ -33,6 +33,7 @@ export function BlockForm({ blockId }: BlockFormProps) {
   const [type, setType] = React.useState<BlockType>("text")
   const [body, setBody] = React.useState("")
   const [defaultCode, setDefaultCode] = React.useState("")
+  const [exampleSolution, setExampleSolution] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState("")
 
@@ -55,6 +56,7 @@ export function BlockForm({ blockId }: BlockFormProps) {
           setType(data.block.type)
           setBody(data.block.body || "")
           setDefaultCode(data.block.defaultCode || "")
+          setExampleSolution(data.block.exampleSolution || "")
         }
       } catch {
         if (active) {
@@ -84,6 +86,7 @@ export function BlockForm({ blockId }: BlockFormProps) {
         description,
         body,
         defaultCode: type === "code" ? defaultCode : "",
+        exampleSolution: type === "code" ? exampleSolution : "",
         markdownImagiCaches,
       }
       const response = await fetch(blockId ? `/api/blocks/${blockId}` : "/api/blocks", {
@@ -183,10 +186,23 @@ export function BlockForm({ blockId }: BlockFormProps) {
             <MarkdownEditor value={body} onChange={setBody} />
           </Field>
           {type === "code" ? (
-            <Field>
-              <FieldLabel>Default code</FieldLabel>
-              <CodeEditor value={defaultCode} onChange={setDefaultCode} />
-            </Field>
+            <>
+              <Field>
+                <FieldLabel>Default code</FieldLabel>
+                <CodeEditor value={defaultCode} onChange={setDefaultCode} />
+              </Field>
+              <Field>
+                <FieldLabel>Example solution</FieldLabel>
+                <CodeEditor
+                  value={exampleSolution}
+                  onChange={setExampleSolution}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Optional instructor-facing reference solution for this code
+                  block.
+                </p>
+              </Field>
+            </>
           ) : null}
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={isSaving}>

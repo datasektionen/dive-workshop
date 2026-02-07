@@ -18,6 +18,7 @@ export type BlockSummary = {
 export type BlockDetail = BlockSummary & {
   body: string
   defaultCode: string
+  exampleSolution: string
 }
 
 export type ModuleSummary = {

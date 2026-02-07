@@ -130,6 +130,8 @@ export async function POST(request: Request) {
     body: content,
     defaultCode,
     default_code,
+    exampleSolution,
+    example_solution,
     markdownImagiCaches,
   } = body ?? {}
 
@@ -161,6 +163,14 @@ export async function POST(request: Request) {
             : typeof default_code === "string"
               ? default_code
               : "",
+        exampleSolution:
+          type === "code"
+            ? typeof exampleSolution === "string"
+              ? exampleSolution
+              : typeof example_solution === "string"
+                ? example_solution
+                : ""
+            : "",
       },
       select: {
         id: true,
@@ -170,6 +180,7 @@ export async function POST(request: Request) {
         description: true,
         body: true,
         defaultCode: true,
+        exampleSolution: true,
         createdAt: true,
       },
     })

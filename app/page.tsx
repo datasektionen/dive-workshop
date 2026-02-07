@@ -22,7 +22,7 @@ const Dither = dynamic(() => import("@/components/Dither"), {
 })
 
 const BACKGROUND_DISABLE_UNTIL_KEY = "dive_login_bg_disabled_until"
-const BACKGROUND_DISABLE_DURATION_MS = 7 * 24 * 60 * 60 * 1000
+const BACKGROUND_DISABLE_DURATION_MS = 60 * 60 * 1000
 
 type NavigatorWithPerformanceHints = Navigator & {
   connection?: {
@@ -91,9 +91,22 @@ export default function Page() {
       if (typeof window === "undefined") return
 
       try {
-        const disabledUntil = Number(
+        const storedDisabledUntil = Number(
           window.localStorage.getItem(BACKGROUND_DISABLE_UNTIL_KEY) || "0"
         )
+        const maxAllowedDisabledUntil =
+          Date.now() + BACKGROUND_DISABLE_DURATION_MS
+        const disabledUntil = Number.isFinite(storedDisabledUntil)
+          ? Math.min(storedDisabledUntil, maxAllowedDisabledUntil)
+          : 0
+
+        if (disabledUntil !== storedDisabledUntil && disabledUntil > 0) {
+          window.localStorage.setItem(
+            BACKGROUND_DISABLE_UNTIL_KEY,
+            String(disabledUntil)
+          )
+        }
+
         if (Number.isFinite(disabledUntil) && disabledUntil > Date.now()) {
           disableAnimatedBackground(false)
           return
