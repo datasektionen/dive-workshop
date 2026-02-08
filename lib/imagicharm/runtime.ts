@@ -15,6 +15,10 @@ type ImagiCharmRuntimeOptions = {
 const IMAGI_IMPORT_LINE = "from open_imagilib.emulator import *"
 const IMAGI_RENDER_CALL = "render()"
 const SYNTAX_ERROR_NAMES = ["SyntaxError", "IndentationError", "TabError"]
+export const PYTHON_EXECUTION_TIMEOUT_SECONDS = 5
+const TIMEOUT_GUIDANCE =
+  `Timeout of ${PYTHON_EXECUTION_TIMEOUT_SECONDS} seconds exceeded, ` +
+  "make sure your code does not include infinite loops."
 
 function withImagiPreludeAndRender(code: string) {
   let result = code.trimEnd()
@@ -59,6 +63,13 @@ export function getPythonErrorMessage(error: unknown, code: string) {
     getInjectedLineOffset(code)
   )
   const lines = adjustedMessage.split("\n")
+  const timeoutLine = [...lines]
+    .reverse()
+    .find((line) => line.includes("TimeoutError:"))
+  if (timeoutLine) {
+    const timeoutMessage = timeoutLine.replace(/^.*TimeoutError:\s*/, "").trim()
+    return timeoutMessage || TIMEOUT_GUIDANCE
+  }
   const errorLine = [...lines]
     .reverse()
     .find((line) =>
@@ -91,6 +102,30 @@ function toJsValue(value: any) {
     return value.toJs({ create_proxies: false })
   }
   return value
+}
+
+function buildTimedExecutionScript(code: string) {
+  const preparedCode = withImagiPreludeAndRender(code)
+  return `
+import sys as __imagi_sys
+import time as __imagi_time
+
+__imagi_timeout_seconds = ${PYTHON_EXECUTION_TIMEOUT_SECONDS}
+__imagi_started_at = __imagi_time.monotonic()
+__imagi_user_code = ${JSON.stringify(preparedCode)}
+__imagi_timeout_message = ${JSON.stringify(TIMEOUT_GUIDANCE)}
+
+def __imagi_trace(frame, event, arg):
+    if __imagi_time.monotonic() - __imagi_started_at > __imagi_timeout_seconds:
+        raise TimeoutError(__imagi_timeout_message)
+    return __imagi_trace
+
+__imagi_sys.settrace(__imagi_trace)
+try:
+    exec(__imagi_user_code, globals(), globals())
+finally:
+    __imagi_sys.settrace(None)
+`
 }
 
 export class ImagiCharmRuntime {
@@ -186,6 +221,6 @@ export class ImagiCharmRuntime {
     }
 
     await this.pyodide.runPythonAsync(IMAGI_PY)
-    await this.pyodide.runPythonAsync(withImagiPreludeAndRender(code))
+    await this.pyodide.runPythonAsync(buildTimedExecutionScript(code))
   }
 }
