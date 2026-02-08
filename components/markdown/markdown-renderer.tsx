@@ -74,6 +74,18 @@ export function MarkdownRenderer({
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkImagiFences]}
           components={{
+            a({ href, children, ...props }) {
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  {...props}
+                >
+                  {children}
+                </a>
+              )
+            },
             code({ className: codeClassName, children, ...props }) {
               const match = /language-(\w+)/.exec(codeClassName || "")
               const codeText = String(children).replace(/\n$/, "")

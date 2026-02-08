@@ -59,6 +59,7 @@ export function ClassForm({ classId }: ClassFormProps) {
   const [endDate, setEndDate] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState("")
+  const [success, setSuccess] = React.useState("")
 
   React.useEffect(() => {
     let isMounted = true
@@ -144,7 +145,12 @@ export function ClassForm({ classId }: ClassFormProps) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const submitter = (event.nativeEvent as SubmitEvent)
+      .submitter as HTMLButtonElement | null
+    const shouldClose = submitter?.dataset.closeAfterSave !== "false"
+
     setError("")
+    setSuccess("")
     setIsSaving(true)
 
     const payload = {
@@ -180,7 +186,12 @@ export function ClassForm({ classId }: ClassFormProps) {
         return
       }
 
-      router.push("/admin/classes")
+      if (shouldClose || !isEdit) {
+        router.push("/admin/classes")
+        return
+      }
+
+      setSuccess("Saved.")
     } catch {
       setError("Save failed.")
     } finally {
@@ -206,6 +217,7 @@ export function ClassForm({ classId }: ClassFormProps) {
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {success ? <p className="text-sm text-emerald-600">{success}</p> : null}
 
       <form className="space-y-6" onSubmit={handleSubmit}>
         <FieldGroup>
@@ -318,13 +330,25 @@ export function ClassForm({ classId }: ClassFormProps) {
             </Select>
           </Field>
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={isSaving}>
-              {isSaving
-                ? "Saving..."
-                : isEdit
-                  ? "Save changes"
-                  : "Create class"}
-            </Button>
+            {isEdit ? (
+              <>
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  data-close-after-save="false"
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+                <Button type="submit" data-close-after-save="true" disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save and close"}
+                </Button>
+              </>
+            ) : (
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Create class"}
+              </Button>
+            )}
             <Button type="button" variant="ghost" onClick={() => router.back()}>
               Cancel
             </Button>

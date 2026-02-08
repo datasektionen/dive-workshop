@@ -36,6 +36,7 @@ export function BlockForm({ blockId }: BlockFormProps) {
   const [exampleSolution, setExampleSolution] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState("")
+  const [success, setSuccess] = React.useState("")
 
   React.useEffect(() => {
     if (!blockId) return
@@ -74,7 +75,12 @@ export function BlockForm({ blockId }: BlockFormProps) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const submitter = (event.nativeEvent as SubmitEvent)
+      .submitter as HTMLButtonElement | null
+    const shouldClose = submitter?.dataset.closeAfterSave !== "false"
+
     setError("")
+    setSuccess("")
     setIsSaving(true)
 
     try {
@@ -101,7 +107,12 @@ export function BlockForm({ blockId }: BlockFormProps) {
         return
       }
 
-      router.push("/admin/blocks")
+      if (shouldClose || !isEdit) {
+        router.push("/admin/blocks")
+        return
+      }
+
+      setSuccess("Saved.")
     } catch {
       setError("Save failed.")
     } finally {
@@ -127,6 +138,7 @@ export function BlockForm({ blockId }: BlockFormProps) {
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {success ? <p className="text-sm text-emerald-600">{success}</p> : null}
 
       <form className="space-y-6" onSubmit={handleSubmit}>
         <FieldGroup>
@@ -205,9 +217,25 @@ export function BlockForm({ blockId }: BlockFormProps) {
             </>
           ) : null}
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Saving..." : isEdit ? "Save block" : "Create block"}
-            </Button>
+            {isEdit ? (
+              <>
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  data-close-after-save="false"
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+                <Button type="submit" data-close-after-save="true" disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save and close"}
+                </Button>
+              </>
+            ) : (
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Create block"}
+              </Button>
+            )}
             <Button type="button" variant="ghost" onClick={() => router.back()}>
               Cancel
             </Button>

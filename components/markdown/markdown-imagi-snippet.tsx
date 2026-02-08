@@ -74,6 +74,30 @@ export function MarkdownImagiSnippet({ cache }: MarkdownImagiSnippetProps) {
     }
   }, [cache, frames])
 
+  if (!cache) {
+    return (
+      <div className="my-4 text-center text-xs text-muted-foreground">
+        Rendering preview...
+      </div>
+    )
+  }
+
+  if (cache.error) {
+    return (
+      <div className="my-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        {cache.error}
+      </div>
+    )
+  }
+
+  if (frames.length === 0) {
+    return (
+      <div className="my-4 text-center text-xs text-muted-foreground">
+        No preview frame available.
+      </div>
+    )
+  }
+
   return (
     <div className="my-4 flex justify-center">
       <div className="grid grid-cols-8 gap-1">

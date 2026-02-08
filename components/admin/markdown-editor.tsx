@@ -16,6 +16,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { useCodeMirrorTheme } from "@/lib/imagicharm/editor-theme"
+import { generateMarkdownImagiCaches } from "@/lib/markdown/imagi-cache-client"
+import type { MarkdownImagiCachePayload } from "@/lib/markdown/imagi-types"
 
 type MarkdownEditorProps = {
   value: string
@@ -24,8 +26,38 @@ type MarkdownEditorProps = {
 
 export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   const [mode, setMode] = React.useState<"edit" | "preview">("edit")
+  const [isFullscreenPreviewOpen, setIsFullscreenPreviewOpen] = React.useState(false)
+  const [imagiCaches, setImagiCaches] = React.useState<MarkdownImagiCachePayload[]>([])
   const codeMirrorTheme = useCodeMirrorTheme()
   const hasContent = value.trim().length > 0
+  const shouldPrepareImagiPreview = mode === "preview" || isFullscreenPreviewOpen
+
+  React.useEffect(() => {
+    if (!shouldPrepareImagiPreview) return
+    if (!/\bimagi-(grid|anim)\b/.test(value)) {
+      setImagiCaches([])
+      return
+    }
+
+    let active = true
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const caches = await generateMarkdownImagiCaches(value)
+        if (active) {
+          setImagiCaches(caches)
+        }
+      } catch {
+        if (active) {
+          setImagiCaches([])
+        }
+      }
+    }, 180)
+
+    return () => {
+      active = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [value, shouldPrepareImagiPreview])
 
   return (
     <div className="overflow-hidden rounded-md border bg-background">
@@ -110,7 +142,10 @@ Right content
             </SheetContent>
           </Sheet>
 
-          <Sheet>
+          <Sheet
+            open={isFullscreenPreviewOpen}
+            onOpenChange={setIsFullscreenPreviewOpen}
+          >
             <SheetTrigger asChild>
               <Button type="button" size="sm" variant="outline" disabled={!hasContent}>
                 Fullscreen preview
@@ -128,7 +163,7 @@ Right content
               </SheetHeader>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
                 {hasContent ? (
-                  <MarkdownRenderer content={value} />
+                  <MarkdownRenderer content={value} imagiCaches={imagiCaches} />
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     Nothing to preview yet.
@@ -157,7 +192,7 @@ Right content
       ) : (
         <div className="h-[320px] overflow-y-auto px-4 py-3">
           {value.trim() ? (
-            <MarkdownRenderer content={value} />
+            <MarkdownRenderer content={value} imagiCaches={imagiCaches} />
           ) : (
             <p className="text-sm text-muted-foreground">
               Nothing to preview yet. Add some markdown in Edit mode.
