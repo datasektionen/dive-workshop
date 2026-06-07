@@ -96,7 +96,18 @@ export async function createParticipantSession(name: string, classId: string) {
       })
       break
     } catch (error) {
-      // Duplicate code, retry.
+      // Only retry on a unique-constraint collision (duplicate code).
+      // Any other error (e.g. invalid classId foreign key) is a real
+      // failure and must surface instead of being silently retried.
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        (error as { code?: string }).code === "P2002"
+      ) {
+        continue
+      }
+      throw error
     }
   }
 
@@ -158,6 +169,13 @@ export async function getParticipantFromSessionToken(token: string | undefined) 
         select: { id: true, name: true, classId: true, code: true },
       })
     : null
+
+  // The session references a participant that no longer exists (deleted).
+  // Treat the session as invalid rather than returning a half-authenticated
+  // identity with a dangling participantId.
+  if (session.participantId && !participant) {
+    return null
+  }
 
   return {
     sessionId: session.id,

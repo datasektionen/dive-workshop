@@ -42,21 +42,29 @@ export async function POST(request: Request) {
       ? moduleIds.filter((moduleId) => typeof moduleId === "string")
       : [];
 
-  const course = await prisma.course.create({
-    data: {
-      name: name.trim(),
-      description: typeof description === "string" ? description.trim() : "",
-      modules: {
-        create: modules.map((moduleId, index) => ({ moduleId, order: index })),
+  try {
+    const course = await prisma.course.create({
+      data: {
+        name: name.trim(),
+        description: typeof description === "string" ? description.trim() : "",
+        modules: {
+          create: modules.map((moduleId, index) => ({ moduleId, order: index })),
+        },
       },
-    },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      createdAt: true,
-    },
-  });
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+      },
+    });
 
-  return NextResponse.json({ course });
+    return NextResponse.json({ course });
+  } catch {
+    // e.g. one of the supplied moduleIds does not exist.
+    return NextResponse.json(
+      { error: "Unable to create course. Check the selected modules." },
+      { status: 400 },
+    );
+  }
 }

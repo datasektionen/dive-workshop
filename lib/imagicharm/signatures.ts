@@ -61,9 +61,9 @@ export const SIGNATURES: Record<string, SignatureInfo> = {
     docs: "Fill the matrix with a color tuple.",
   },
   character: {
-    label: "character(char, char_color=on, back_color=off)",
+    label: "character(char, char_color=on, back_color=0)",
     params: ["char", "char_color", "back_color"],
-    docs: "Draw a character on the matrix.",
+    docs: "Draw a character on the matrix. By default it is drawn over the existing pixels; pass back_color to fill the background first.",
   },
   scrolling_text: {
     label:

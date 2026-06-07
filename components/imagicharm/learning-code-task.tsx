@@ -41,6 +41,8 @@ type LearningCodeTaskProps = {
   onCodeChange: (nextCode: string) => void
 }
 
+const FRAME_STREAM_INTERVAL_MS = 150
+
 export function LearningCodeTask({
   className,
   blockId,
@@ -61,14 +63,67 @@ export function LearningCodeTask({
   const [isConnected, setIsConnected] = React.useState(false)
   const [deviceName, setDeviceName] = React.useState("")
   const [sessionId, setSessionId] = React.useState<string | null>(null)
+  const [liveStatus, setLiveStatus] = React.useState<
+    "connecting" | "online" | "reconnecting"
+  >("connecting")
   const runtimeRef = React.useRef<ImagiCharmRuntime | null>(null)
   const bleRef = React.useRef<ImagiCharmBleClient | null>(null)
   const wsRef = React.useRef<WebSocket | null>(null)
   const wsRetryRef = React.useRef(0)
   const wsClosedRef = React.useRef(false)
+  const wsReconnectTimerRef = React.useRef<number | null>(null)
   const latestCodeRef = React.useRef(code)
   const latestBlockRef = React.useRef(blockId)
   latestBlockRef.current = blockId
+  const frameThrottleRef = React.useRef<{
+    last: number
+    timer: number | null
+    pending: Matrix | null
+  }>({ last: 0, timer: null, pending: null })
+
+  // Stream the participant's current display (an 8x8 RGB matrix) to watching
+  // admins, throttled so animations don't flood the socket. Always sends a
+  // trailing frame so the last state is never lost.
+  const streamFrame = React.useCallback((nextMatrix: Matrix) => {
+    const targetBlockId = latestBlockRef.current
+    const socket = wsRef.current
+    if (!targetBlockId || !socket || socket.readyState !== WebSocket.OPEN) {
+      return
+    }
+    const send = (m: Matrix) =>
+      socket.send(
+        JSON.stringify({ type: "frame_update", blockId: targetBlockId, matrix: m })
+      )
+    const state = frameThrottleRef.current
+    const now = Date.now()
+    if (now - state.last >= FRAME_STREAM_INTERVAL_MS) {
+      state.last = now
+      send(nextMatrix)
+      return
+    }
+    state.pending = nextMatrix
+    if (state.timer === null) {
+      state.timer = window.setTimeout(
+        () => {
+          state.timer = null
+          state.last = Date.now()
+          if (state.pending) {
+            send(state.pending)
+            state.pending = null
+          }
+        },
+        FRAME_STREAM_INTERVAL_MS - (now - state.last)
+      )
+    }
+  }, [])
+
+  const handleRenderFrame = React.useCallback(
+    (nextMatrix: Matrix) => {
+      setMatrix(nextMatrix)
+      streamFrame(nextMatrix)
+    },
+    [streamFrame]
+  )
 
   const handleCodeChange = React.useCallback(
     (nextCode: string) => {
@@ -90,32 +145,30 @@ export function LearningCodeTask({
       },
     })
 
-    runtimeRef.current = new ImagiCharmRuntime(
-      (nextMatrix) => {
-        setMatrix(nextMatrix)
+    runtimeRef.current = new ImagiCharmRuntime(handleRenderFrame, {
+      onAnimation: (frames: ImagiFrame[], loopCount: number) => {
+        if (!bleRef.current?.isConnected()) return
+        void bleRef.current.sendAnimation(frames, loopCount).catch((err) => {
+          console.error("[imagi] ble send error", err)
+          setBleError(
+            "Unable to send to imagiCharm. Check connection and try again."
+          )
+        })
       },
-      {
-        onAnimation: (frames: ImagiFrame[], loopCount: number) => {
-          if (!bleRef.current?.isConnected()) return
-          void bleRef.current
-            .sendAnimation(frames, loopCount)
-            .catch((err) => {
-              console.error("[imagi] ble send error", err)
-              setBleError(
-                "Unable to send to imagiCharm. Check connection and try again."
-              )
-            })
-        },
-      }
-    )
+    })
 
+    const frameThrottle = frameThrottleRef.current
     return () => {
       runtimeRef.current?.dispose()
       runtimeRef.current = null
       bleRef.current?.disconnect()
       bleRef.current = null
+      if (frameThrottle.timer !== null) {
+        window.clearTimeout(frameThrottle.timer)
+        frameThrottle.timer = null
+      }
     }
-  }, [])
+  }, [handleRenderFrame])
 
   React.useEffect(() => {
     let active = true
@@ -145,6 +198,7 @@ export function LearningCodeTask({
     wsClosedRef.current = false
     const protocol = window.location.protocol === "https:" ? "wss" : "ws"
 
+    setLiveStatus("connecting")
     const connect = () => {
       if (wsClosedRef.current) return
       const socket = new WebSocket(`${protocol}://${window.location.host}/ws`)
@@ -152,6 +206,7 @@ export function LearningCodeTask({
 
       socket.addEventListener("open", () => {
         wsRetryRef.current = 0
+        setLiveStatus("online")
         if (!latestBlockRef.current) return
         socket.send(
           JSON.stringify({
@@ -164,11 +219,13 @@ export function LearningCodeTask({
 
       socket.addEventListener("close", () => {
         if (wsClosedRef.current) return
+        setLiveStatus("reconnecting")
+        // Keep retrying with capped exponential backoff instead of silently
+        // giving up after a few attempts, so live sync recovers on its own.
         const nextRetry = wsRetryRef.current + 1
         wsRetryRef.current = nextRetry
-        if (nextRetry > 3) return
-        const timeout = 500 * nextRetry
-        window.setTimeout(connect, timeout)
+        const timeout = Math.min(500 * nextRetry, 5000)
+        wsReconnectTimerRef.current = window.setTimeout(connect, timeout)
       })
     }
 
@@ -176,17 +233,25 @@ export function LearningCodeTask({
 
     return () => {
       wsClosedRef.current = true
+      if (wsReconnectTimerRef.current !== null) {
+        window.clearTimeout(wsReconnectTimerRef.current)
+        wsReconnectTimerRef.current = null
+      }
       wsRef.current?.close()
       wsRef.current = null
     }
   }, [sessionId])
 
   React.useEffect(() => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
     if (!blockId) return
 
+    // Always schedule the debounced send. We check readiness inside the
+    // timeout rather than bailing up front, so edits made while the socket
+    // is still connecting are not silently dropped — if the socket has
+    // opened by the time the timer fires, the update is sent.
     const handle = window.setTimeout(() => {
-      wsRef.current?.send(
+      if (wsRef.current?.readyState !== WebSocket.OPEN) return
+      wsRef.current.send(
         JSON.stringify({
           type: "code_update",
           blockId,
@@ -236,34 +301,60 @@ export function LearningCodeTask({
     setBleError("")
     setIsRunning(true)
     const runCode = latestCodeRef.current
+    let runError: string | null = null
 
     try {
       if (!runtimeRef.current) {
-        runtimeRef.current = new ImagiCharmRuntime((nextMatrix) => {
-          setMatrix(nextMatrix)
-        })
+        runtimeRef.current = new ImagiCharmRuntime(handleRenderFrame)
       }
       await runtimeRef.current.run(runCode)
-      if (blockId) {
-        void fetch("/api/events", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "code_run",
-            blockId,
-            moduleId,
-          }),
-        })
-      }
     } catch (err) {
-      setError(getPythonErrorMessage(err, runCode))
+      runError = getPythonErrorMessage(err, runCode)
+      setError(runError)
     } finally {
       setIsRunning(false)
+    }
+
+    if (blockId) {
+      const success = runError === null
+      // Persist the run: a successful run counts toward progress (code_run);
+      // a failure is logged separately so it does not inflate run counts but
+      // is still available for error analytics.
+      void fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: success ? "code_run" : "code_error",
+          blockId,
+          moduleId,
+          metadata: { success, error: runError },
+        }),
+      })
+      // Live error/success signal for watching admins.
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "run_result",
+            blockId,
+            success,
+            error: runError,
+          })
+        )
+      }
+    }
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    // Run with Cmd/Ctrl+Enter from anywhere in the task (incl. the editor).
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault()
+      if (!isRunning) void handleRun()
     }
   }
 
   return (
     <div
+      onKeyDown={handleKeyDown}
       className={cn(
         "learning-code-layout grid h-full min-h-0 gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,300px)]",
         className
@@ -292,6 +383,7 @@ export function LearningCodeTask({
               size="sm"
               className="w-full"
               disabled={isRunning}
+              title="Run (⌘/Ctrl+Enter)"
             >
               {isRunning ? "Running..." : "Run"}
             </Button>
@@ -346,18 +438,26 @@ export function LearningCodeTask({
             </Button>
           </div>
         </div>
-        <div className="mt-auto flex items-center gap-2 pb-3 text-xs text-muted-foreground">
-          <span
-            className={cn(
-              "h-2 w-2 rounded-full",
-              isConnected ? "bg-emerald-500" : "bg-muted-foreground/40"
-            )}
-          />
-          <span>
-            {isConnected
-              ? (deviceName || "ImagiCharm connected")
-              : "ImagiCharm not connected"}
-          </span>
+        <div className="mt-auto flex flex-col gap-1 pb-3 text-xs text-muted-foreground">
+          {liveStatus === "reconnecting" ? (
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <span>Live sync reconnecting…</span>
+            </div>
+          ) : null}
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                isConnected ? "bg-emerald-500" : "bg-muted-foreground/40"
+              )}
+            />
+            <span>
+              {isConnected
+                ? (deviceName || "ImagiCharm connected")
+                : "ImagiCharm not connected"}
+            </span>
+          </div>
         </div>
       </div>
     </div>

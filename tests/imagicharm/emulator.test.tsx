@@ -14,7 +14,12 @@ matrix[0][0] = [255, 0, 0]
 describe("Emulator", () => {
   it("renders 64 pixels and applies color", () => {
     const { container } = render(<Emulator matrix={matrix} />)
-    const pixels = container.querySelectorAll("div.grid > div")
+    // The component renders several `.grid` containers (outer layout, x/y axis
+    // labels, and the pixel grid). The pixel grid is the last one; scope to it
+    // so the axis-label cells aren't counted.
+    const grids = container.querySelectorAll("div.grid")
+    const pixelGrid = grids[grids.length - 1]
+    const pixels = pixelGrid.querySelectorAll(":scope > div")
     expect(pixels.length).toBe(64)
     expect(pixels[0]).toHaveStyle({ backgroundColor: "rgb(255, 0, 0)" })
   })

@@ -93,32 +93,40 @@ export async function POST(request: Request) {
     )
   }
 
-  const classItem = await prisma.class.create({
-    data: {
-      title: title.trim(),
-      name: name.trim(),
-      description: typeof description === "string" ? description.trim() : "",
-      accessCode: accessCode.trim(),
-      active: typeof active === "boolean" ? active : true,
-      courseId: courseId.trim(),
-      startDate: parsedStart,
-      endDate: parsedEnd,
-    },
-    select: {
-      id: true,
-      title: true,
-      name: true,
-      description: true,
-      accessCode: true,
-      active: true,
-      startDate: true,
-      endDate: true,
-      createdAt: true,
-      course: {
-        select: { id: true, name: true },
+  try {
+    const classItem = await prisma.class.create({
+      data: {
+        title: title.trim(),
+        name: name.trim(),
+        description: typeof description === "string" ? description.trim() : "",
+        accessCode: accessCode.trim(),
+        active: typeof active === "boolean" ? active : true,
+        courseId: courseId.trim(),
+        startDate: parsedStart,
+        endDate: parsedEnd,
       },
-    },
-  })
+      select: {
+        id: true,
+        title: true,
+        name: true,
+        description: true,
+        accessCode: true,
+        active: true,
+        startDate: true,
+        endDate: true,
+        createdAt: true,
+        course: {
+          select: { id: true, name: true },
+        },
+      },
+    })
 
-  return NextResponse.json({ class: classItem })
+    return NextResponse.json({ class: classItem })
+  } catch {
+    // e.g. invalid courseId foreign key, or duplicate accessCode.
+    return NextResponse.json(
+      { error: "Unable to create class. Check the selected course." },
+      { status: 400 }
+    )
+  }
 }

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs"
 
 import { getAdminFromRequest } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isValidEmail, normalizeEmail } from "@/lib/utils"
 
 export async function GET() {
   const admin = await getAdminFromRequest()
@@ -37,7 +38,10 @@ export async function PATCH(request: Request) {
   }
 
   if (typeof email === "string" && email.trim()) {
-    data.email = email.trim()
+    if (!isValidEmail(email)) {
+      return NextResponse.json({ error: "Email is invalid." }, { status: 400 })
+    }
+    data.email = normalizeEmail(email)
   }
 
   if (typeof password === "string" && password.trim()) {

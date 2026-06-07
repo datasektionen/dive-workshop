@@ -52,12 +52,14 @@ function findCallSignature(
     if (current.type?.name === "CallExpression") {
       const callee =
         current.getChild("VariableName") || current.getChild("Identifier");
-      if (!callee) return null;
-      const name = state.doc.sliceString(callee.from, callee.to);
-      if (SIGNATURES[name]) {
-        return { name, from: callee.from, to: callee.to };
+      if (callee) {
+        const name = state.doc.sliceString(callee.from, callee.to);
+        if (SIGNATURES[name]) {
+          return { name, from: callee.from, to: callee.to };
+        }
       }
-      return null;
+      // Not a known signature (or anonymous callee): keep searching outward
+      // so a known function nested inside an unknown call still gets a hint.
     }
     current = current.parent;
   }

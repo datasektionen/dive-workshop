@@ -29,11 +29,11 @@ function parseMarkdownImagiCaches(
   loopCount: number
   error: string | null
 }> | null {
-  if (typeof input === "undefined") {
-    return null
-  }
+  // Returning null signals "no change" so existing caches are left untouched.
+  // Only an actual array payload should ever replace the stored caches; a
+  // missing or malformed value must not trigger a destructive deleteMany.
   if (!Array.isArray(input)) {
-    return []
+    return null
   }
 
   const parsed: Array<{

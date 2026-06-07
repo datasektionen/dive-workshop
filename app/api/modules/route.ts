@@ -55,24 +55,32 @@ export async function POST(request: Request) {
       ? blockIds.filter((blockId) => typeof blockId === "string")
       : []
 
-  const moduleItem = await prisma.module.create({
-    data: {
-      name: name.trim(),
-      title: title.trim(),
-      description: typeof description === "string" ? description.trim() : "",
-      blocks: {
-        create: blocks.map((blockId, index) => ({ blockId, order: index })),
+  try {
+    const moduleItem = await prisma.module.create({
+      data: {
+        name: name.trim(),
+        title: title.trim(),
+        description: typeof description === "string" ? description.trim() : "",
+        blocks: {
+          create: blocks.map((blockId, index) => ({ blockId, order: index })),
+        },
       },
-    },
-    select: {
-      id: true,
-      name: true,
-      title: true,
-      description: true,
-      createdAt: true,
-      _count: { select: { blocks: true } },
-    },
-  })
+      select: {
+        id: true,
+        name: true,
+        title: true,
+        description: true,
+        createdAt: true,
+        _count: { select: { blocks: true } },
+      },
+    })
 
-  return NextResponse.json({ module: moduleItem })
+    return NextResponse.json({ module: moduleItem })
+  } catch {
+    // e.g. one of the supplied blockIds does not exist.
+    return NextResponse.json(
+      { error: "Unable to create module. Check the selected blocks." },
+      { status: 400 }
+    )
+  }
 }

@@ -27,7 +27,9 @@ export function AdminForm({
   onSuccessRedirect,
 }: AdminFormProps) {
   const router = useRouter()
-  const [admin, setAdmin] = React.useState<AdminRecord | null>(null)
+  const [fullName, setFullName] = React.useState("")
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState("")
   const [success, setSuccess] = React.useState("")
@@ -52,7 +54,8 @@ export function AdminForm({
         }
         const data = (await response.json()) as { admin: AdminRecord }
         if (active) {
-          setAdmin(data.admin)
+          setFullName(data.admin.fullName ?? "")
+          setEmail(data.admin.email ?? "")
         }
       } catch (err) {
         if (active) {
@@ -74,11 +77,10 @@ export function AdminForm({
     setSuccess("")
     setIsSaving(true)
 
-    const formData = new FormData(event.currentTarget)
     const payload = {
-      fullName: String(formData.get("fullName") || ""),
-      email: String(formData.get("email") || ""),
-      password: String(formData.get("password") || ""),
+      fullName,
+      email,
+      password,
     }
 
     try {
@@ -95,7 +97,9 @@ export function AdminForm({
       }
 
       const data = (await response.json()) as { admin: AdminRecord }
-      setAdmin(data.admin)
+      setFullName(data.admin.fullName ?? "")
+      setEmail(data.admin.email ?? "")
+      setPassword("")
 
       if (onSuccessRedirect) {
         router.push(onSuccessRedirect)
@@ -135,7 +139,8 @@ export function AdminForm({
             <Input
               id="fullName"
               name="fullName"
-              defaultValue={admin?.fullName ?? ""}
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
               placeholder="Full name"
               required
             />
@@ -146,7 +151,8 @@ export function AdminForm({
               id="email"
               name="email"
               type="email"
-              defaultValue={admin?.email ?? ""}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               placeholder="Email"
               required
             />
@@ -159,6 +165,8 @@ export function AdminForm({
               id="password"
               name="password"
               type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
               placeholder={
                 mode === "create"
                   ? "Set a temporary password"

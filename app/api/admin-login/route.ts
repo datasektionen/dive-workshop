@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 
 import { createAdminSession, getSessionCookieName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeEmail } from "@/lib/utils";
 
 export async function POST(request: Request) {
   const { email, password } = await request.json();
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   }
 
   const admin = await prisma.admin.findUnique({
-    where: { email },
+    where: { email: normalizeEmail(String(email)) },
   });
 
   if (!admin) {

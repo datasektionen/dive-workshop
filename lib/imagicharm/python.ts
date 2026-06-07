@@ -1066,9 +1066,10 @@ def background(color):
     m.background(color)
 
 def character(char, char_color=on, back_color=0):
+    # back_color defaults to 0 (no fill) so a character is drawn over the
+    # existing pixels, matching open-imagilib / the physical device. Pass a
+    # color to fill the background first.
     if back_color:
-        if back_color == 0:
-            back_color = off
         m.background(back_color)
     m.character(char, char_color)
 

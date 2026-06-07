@@ -185,6 +185,10 @@ export class ImagiCharmRuntime {
 
     let loops = 0
     const schedule = () => {
+      // Drop the previous iteration's already-fired timers before queuing the
+      // next batch. Without this, an infinite animation (loopCount === 0)
+      // appends timer ids forever and the array grows without bound.
+      this.clearTimers()
       let delay = 0
       frames.forEach((frame) => {
         const snapshot = getFrameValue(frame, "snapshot")

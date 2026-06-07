@@ -119,7 +119,7 @@ export function OrderablePicker<TItem extends { id: string }>({
       </div>
       <div>
         <p className="text-sm font-medium">{availableLabel}</p>
-        {items.length === 0 ? (
+        {availableItems.length === 0 ? (
           <p className="text-sm text-muted-foreground">{emptyAvailableText}</p>
         ) : (
           <div className="mt-2 space-y-2">
